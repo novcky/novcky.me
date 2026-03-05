@@ -371,24 +371,7 @@ h2 {
 
 .confirm-btn {
   min-width: 76px;
-  height: 32px;
-  padding: 0 14px;
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  border: none;
-  border-radius: 8px;
-  color: #fff;
   white-space: nowrap;
-  cursor: pointer;
-}
-
-.confirm-btn-cancel {
-  background: rgb(255 255 255 / 24%);
-}
-
-.confirm-btn-submit {
-  background: #409EFF;
 }
 
 .foot {

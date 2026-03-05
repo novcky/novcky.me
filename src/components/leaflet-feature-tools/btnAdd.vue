@@ -96,22 +96,24 @@ async function handleSubmit() {
       class="operation-panel"
       @click.stop
     >
-      <button
-        type="button"
+      <n-button
         class="operation-btn operation-btn-cancel"
         :disabled="isLoading"
+        quaternary
+        size="small"
         @click="handleDeactivate"
       >
         取 消
-      </button>
-      <button
-        type="button"
+      </n-button>
+      <n-button
         class="operation-btn operation-btn-submit"
-        :disabled="isLoading"
+        :loading="isLoading"
+        size="small"
+        type="primary"
         @click="handleSubmit"
       >
-        {{ isLoading ? '提交中...' : '提 交' }}
-      </button>
+        提 交
+      </n-button>
     </div>
   </div>
 </template>

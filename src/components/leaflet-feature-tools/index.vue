@@ -352,28 +352,5 @@ onBeforeUnmount(() => {
 
 :deep(.operation-btn) {
   min-width: 76px;
-  height: 30px;
-  padding: 0 12px;
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  border: none;
-  border-radius: 6px;
-  color: #fff;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-:deep(.operation-btn:disabled) {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-:deep(.operation-btn-cancel) {
-  background: rgb(255 255 255 / 25%);
-}
-
-:deep(.operation-btn-submit) {
-  background: #409EFF;
 }
 </style>

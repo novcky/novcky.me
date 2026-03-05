@@ -218,20 +218,20 @@ onBeforeUnmount(() => {
           {{ confirmState.message }}
         </p>
         <div class="confirm-actions">
-          <button
-            type="button"
-            class="confirm-btn confirm-btn-cancel"
+          <n-button
+            class="confirm-btn"
+            quaternary
             @click="resolveConfirm(false)"
           >
             取 消
-          </button>
-          <button
-            type="button"
-            class="confirm-btn confirm-btn-submit"
+          </n-button>
+          <n-button
+            class="confirm-btn"
+            type="primary"
             @click="resolveConfirm(true)"
           >
             确 定
-          </button>
+          </n-button>
         </div>
       </div>
     </div>
