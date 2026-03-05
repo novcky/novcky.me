@@ -50,6 +50,13 @@ const userNameText = computed(() => currentRecord.value?.userName ?? '-')
 const workAreaText = computed(() => currentRecord.value?.workArea ?? '-')
 const lineNameText = computed(() => currentRecord.value?.lineName ?? '-')
 const speedText = computed(() => currentRecord.value?.speed ?? 0)
+const progressPercentage = computed(() => {
+  const total = player.sliderMax - player.sliderMin
+  if (total <= 0)
+    return 0
+
+  return Math.round(((player.sliderValue - player.sliderMin) / total) * 100)
+})
 
 watch(
   () => player.selectSpeed,
@@ -112,6 +119,12 @@ function setSliderValue(nextValue: number) {
   player.sliderValue = clampSliderValue(nextValue)
 }
 
+function normalizeSliderValue(value: number | number[]) {
+  return Array.isArray(value)
+    ? (value[0] ?? player.sliderMin)
+    : value
+}
+
 function updateMarkerTooltip() {
   const marker = movingMarker.value
   if (!marker)
@@ -125,14 +138,13 @@ function updateMarkerTooltip() {
   marker.setTooltipContent(label)
 }
 
-function handleSliderInput(event: Event) {
+function handleSliderUpdate(value: number | number[]) {
+  const targetIndex = clampSliderValue(Number(normalizeSliderValue(value)))
+  setSliderValue(targetIndex)
+
   const marker = movingMarker.value
   if (!marker)
     return
-
-  const target = event.target as HTMLInputElement
-  const targetIndex = clampSliderValue(Number(target.value))
-  setSliderValue(targetIndex)
 
   if (!marker.isPaused())
     marker.pause()
@@ -141,18 +153,14 @@ function handleSliderInput(event: Event) {
   updateMarkerTooltip()
 }
 
-function handleSliderChange(event: Event) {
+function handleSliderDragEnd() {
   const marker = movingMarker.value
   if (!marker)
     return
 
-  const target = event.target as HTMLInputElement
-  const targetIndex = clampSliderValue(Number(target.value))
-  setSliderValue(targetIndex)
-
-  marker.playFromLine(targetIndex)
+  marker.playFromLine(player.sliderValue)
   if (player.status !== 'play') {
-    // 进度条拖拽后需回到原状态，避免“停住时拖动却自动继续播放”。
+    // 拖拽定位会临时触发内部播放状态，这里需要立刻回退，避免暂停态被意外改成播放态。
     window.setTimeout(() => {
       marker.pause()
     }, 0)
@@ -398,15 +406,23 @@ onBeforeUnmount(() => {
         </header>
 
         <div class="moving-player-progress">
-          <input
+          <n-progress
+            :percentage="progressPercentage"
+            :show-indicator="false"
+            class="moving-progress-bar"
+            type="line"
+          />
+          <n-slider
             :value="player.sliderValue"
             :min="player.sliderMin"
             :max="player.sliderMax"
+            :disabled="!hasTrajectory"
+            :step="1"
+            :tooltip="false"
             class="moving-slider"
-            type="range"
-            @input="handleSliderInput"
-            @change="handleSliderChange"
-          >
+            @update:value="handleSliderUpdate"
+            @dragend="handleSliderDragEnd"
+          />
           <div class="moving-player-time">
             <span>{{ currentTimeText }}</span>
             <span>{{ endTimeText }}</span>
@@ -415,41 +431,38 @@ onBeforeUnmount(() => {
 
         <div class="moving-player-controls">
           <div class="moving-player-buttons">
-            <button
-              class="moving-btn moving-btn-primary"
-              type="button"
+            <n-button
+              :disabled="!hasTrajectory"
+              size="small"
+              type="primary"
               @click="togglePlay"
             >
               {{ player.status === 'play' ? '暂停' : '播放' }}
-            </button>
-            <button
-              class="moving-btn moving-btn-danger"
-              type="button"
-              :disabled="player.status === 'stop'"
+            </n-button>
+            <n-button
+              :disabled="!hasTrajectory || player.status === 'stop'"
+              size="small"
+              type="error"
               @click="stopPlayer"
             >
               停止
-            </button>
-            <select
-              v-model.number="player.selectSpeed"
+            </n-button>
+            <n-select
+              v-model:value="player.selectSpeed"
+              :consistent-menu-width="false"
+              :disabled="!hasTrajectory"
+              :options="player.speedOptions"
               class="moving-speed-select"
-            >
-              <option
-                v-for="item in player.speedOptions"
-                :key="item.value"
-                :value="item.value"
-              >
-                {{ item.label }}
-              </option>
-            </select>
-            <label class="moving-loop-toggle">
-              <input
-                v-model="player.loopEnabled"
-                class="moving-loop-checkbox"
-                type="checkbox"
-              >
-              循环播放
-            </label>
+              size="small"
+            />
+            <div class="moving-loop-toggle">
+              <n-switch
+                v-model:value="player.loopEnabled"
+                :disabled="!hasTrajectory"
+                size="small"
+              />
+              <span>循环播放</span>
+            </div>
           </div>
 
           <div class="moving-player-line">
@@ -518,6 +531,10 @@ onBeforeUnmount(() => {
   gap: 8px;
 }
 
+.moving-progress-bar {
+  margin-bottom: 2px;
+}
+
 .moving-slider {
   width: 100%;
 }
@@ -544,43 +561,8 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
 }
 
-.moving-btn {
-  min-width: 80px;
-  height: 32px;
-  padding: 0 12px;
-  border: none;
-  border-radius: 8px;
-  color: #fff;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.moving-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.moving-btn-primary {
-  background: #409EFF;
-}
-
-.moving-btn-danger {
-  background: #f56c6c;
-}
-
 .moving-speed-select {
-  min-width: 90px;
-  height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--panel-border);
-  border-radius: 8px;
-  color: var(--text);
-  background: rgb(255 255 255 / 8%);
-}
-
-.moving-speed-select option {
-  color: #1f2937;
-  background: #fff;
+  width: 96px;
 }
 
 .moving-loop-toggle {
@@ -590,14 +572,6 @@ onBeforeUnmount(() => {
   color: var(--muted);
   font-size: 13px;
   user-select: none;
-}
-
-.moving-loop-checkbox {
-  width: 14px;
-  height: 14px;
-  margin: 0;
-  accent-color: #409EFF;
-  cursor: pointer;
 }
 
 .moving-player-line {
