@@ -40,6 +40,9 @@ jobs:
         run: |
           if [ -n "${{ vars.VITE_APP_BASE }}" ]; then
             echo "VITE_APP_BASE=${{ vars.VITE_APP_BASE }}" >> "$GITHUB_ENV"
+          elif [ -f "public/CNAME" ]; then
+            # 使用自定义域名时，站点根路径为 /，否则会出现资源 404 导致白屏。
+            echo "VITE_APP_BASE=/" >> "$GITHUB_ENV"
           elif [ "${{ github.event.repository.name }}" = "${{ github.repository_owner }}.github.io" ]; then
             echo "VITE_APP_BASE=/" >> "$GITHUB_ENV"
           else
