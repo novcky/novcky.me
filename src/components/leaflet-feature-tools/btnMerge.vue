@@ -98,8 +98,18 @@ async function handleSubmit() {
 
 <template>
   <div>
-    <span class="tool-icon">⛓</span>
-    <span>合并</span>
+    <span
+      class="tool-icon"
+      aria-hidden="true"
+    >
+      <svg viewBox="0 0 24 24">
+        <path
+          fill="currentColor"
+          d="M7.58 7.58a3.5 3.5 0 0 1 4.95 0l1.06 1.06a.75.75 0 0 1-1.06 1.06l-1.06-1.06a2 2 0 1 0-2.83 2.83l1.06 1.06a.75.75 0 1 1-1.06 1.06l-1.06-1.06a3.5 3.5 0 0 1 0-4.95Zm8.84 8.84a3.5 3.5 0 0 1-4.95 0l-1.06-1.06a.75.75 0 0 1 1.06-1.06l1.06 1.06a2 2 0 1 0 2.83-2.83l-1.06-1.06a.75.75 0 0 1 1.06-1.06l1.06 1.06a3.5 3.5 0 0 1 0 4.95Zm-7.9-2.95a.75.75 0 0 1 0-1.06l3.89-3.89a.75.75 0 0 1 1.06 1.06l-3.89 3.89a.75.75 0 0 1-1.06 0Z"
+        />
+      </svg>
+    </span>
+    <span class="tool-label">合并</span>
 
     <div
       v-show="isActive"
@@ -112,7 +122,7 @@ async function handleSubmit() {
         size="small"
         @click="handleDeactivate"
       >
-        取 消
+        取消
       </n-button>
       <n-button
         class="operation-btn operation-btn-submit"
@@ -121,7 +131,7 @@ async function handleSubmit() {
         type="primary"
         @click="handleSubmit"
       >
-        提 交
+        提交
       </n-button>
     </div>
   </div>

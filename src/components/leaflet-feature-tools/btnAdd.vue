@@ -88,8 +88,18 @@ async function handleSubmit() {
 
 <template>
   <div>
-    <span class="tool-icon">＋</span>
-    <span>新增</span>
+    <span
+      class="tool-icon"
+      aria-hidden="true"
+    >
+      <svg viewBox="0 0 24 24">
+        <path
+          fill="currentColor"
+          d="M12 4.25a.75.75 0 0 1 .75.75v6.25H19a.75.75 0 0 1 0 1.5h-6.25V19a.75.75 0 0 1-1.5 0v-6.25H5a.75.75 0 0 1 0-1.5h6.25V5a.75.75 0 0 1 .75-.75Z"
+        />
+      </svg>
+    </span>
+    <span class="tool-label">新增</span>
 
     <div
       v-show="isActive"
@@ -102,7 +112,7 @@ async function handleSubmit() {
         size="small"
         @click="handleDeactivate"
       >
-        取 消
+        取消
       </n-button>
       <n-button
         class="operation-btn operation-btn-submit"
@@ -111,7 +121,7 @@ async function handleSubmit() {
         type="primary"
         @click="handleSubmit"
       >
-        提 交
+        提交
       </n-button>
     </div>
   </div>
