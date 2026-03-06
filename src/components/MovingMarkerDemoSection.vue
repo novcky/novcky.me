@@ -698,11 +698,6 @@ onBeforeUnmount(() => {
                   </n-button>
                 </n-dropdown>
               </div>
-              <div class="moving-player-time">
-                <span>{{ currentTimeText }}</span>
-                <span class="moving-player-time-separator">/</span>
-                <span>{{ endTimeText }}</span>
-              </div>
             </div>
             <div class="moving-player-switches">
               <div class="moving-loop-toggle">
@@ -721,6 +716,11 @@ onBeforeUnmount(() => {
                 />
                 <span>循环播放</span>
               </div>
+            </div>
+            <div class="moving-player-time">
+              <span>{{ currentTimeText }}</span>
+              <span class="moving-player-time-separator">/</span>
+              <span>{{ endTimeText }}</span>
             </div>
           </div>
         </div>
@@ -785,6 +785,7 @@ onBeforeUnmount(() => {
   border: 1px solid rgb(255 255 255 / 24%);
   border-radius: 12px;
   backdrop-filter: blur(8px);
+  container-type: inline-size;
 }
 
 .moving-player-mask {
@@ -810,6 +811,7 @@ onBeforeUnmount(() => {
 }
 
 .moving-player-time {
+  grid-area: time;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -822,6 +824,7 @@ onBeforeUnmount(() => {
   background: rgb(255 255 255 / 8%);
   border: 1px solid rgb(255 255 255 / 20%);
   border-radius: 999px;
+  justify-self: end;
 }
 
 .moving-player-time-separator {
@@ -829,16 +832,16 @@ onBeforeUnmount(() => {
 }
 
 .moving-player-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas: 'controls switches time';
+  align-items: center;
+  gap: 8px 12px;
 }
 
 .moving-player-controls-main {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px 12px;
+  grid-area: controls;
+  min-width: 0;
 }
 
 .moving-player-buttons {
@@ -871,10 +874,12 @@ onBeforeUnmount(() => {
 }
 
 .moving-player-switches {
+  grid-area: switches;
   display: flex;
   align-items: center;
   gap: 14px;
   color: rgb(238 243 252 / 82%);
+  min-width: 0;
 }
 
 .moving-loop-toggle {
@@ -891,6 +896,41 @@ onBeforeUnmount(() => {
 
 :deep(.moving-slider .n-slider-rail__fill) {
   background: #409EFF;
+}
+
+@container (max-width: 980px) {
+  .moving-player-controls {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'controls controls'
+      'switches time';
+  }
+
+  .moving-player-switches {
+    justify-self: start;
+  }
+}
+
+@container (max-width: 760px) {
+  .moving-player-controls {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'controls'
+      'switches'
+      'time';
+  }
+
+  .moving-player-switches {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .moving-loop-toggle {
+    width: 100%;
+    justify-content: space-between;
+    padding: 0 2px;
+  }
 }
 
 @media (max-width: 860px) {
@@ -914,33 +954,6 @@ onBeforeUnmount(() => {
   .moving-player-buttons {
     width: 100%;
     gap: 6px;
-  }
-
-  .moving-player-time {
-    margin-left: auto;
-  }
-
-  .moving-player-switches {
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-  }
-
-  .moving-loop-toggle {
-    width: 100%;
-    justify-content: space-between;
-    padding: 0 2px;
-    font-size: 12px;
-  }
-
-  .moving-player-controls-main {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-
-  .moving-player-time {
-    justify-content: flex-end;
   }
 
   .moving-speed-btn {
