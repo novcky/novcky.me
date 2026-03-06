@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type * as L from 'leaflet'
 import { computed, inject, ref, watch } from 'vue'
 
 import { FEATURE_TOOLS_INJECTION_KEY } from './context'
@@ -31,8 +32,14 @@ function handleActivate() {
   if (!ensureGeoman(featureTools.pm.value, featureTools.notify, '编辑'))
     return
 
+  if (!featureTools.curFeatures.value[0]) {
+    featureTools.notify('warning', '请先选择要编辑的图斑')
+    handleDeactivate()
+    return
+  }
+
   featureTools.setEnableMapClickEvents(false)
-  featureTools.pm.value?.enableGlobalEditMode?.()
+  setSelectedLayersEditing(true)
 }
 
 function handleDeactivate() {
@@ -41,11 +48,42 @@ function handleDeactivate() {
 }
 
 function handleReset() {
-  featureTools.pm.value?.disableGlobalEditMode?.()
+  setSelectedLayersEditing(false)
   featureTools.clearPolygonGroup()
   if (featureTools.curFeatures.value[0])
     featureTools.drawFeature(featureTools.curFeatures.value[0])
   isLoading.value = false
+}
+
+function setSelectedLayersEditing(enabled: boolean) {
+  const layers = featureTools.polygonGroup.getLayers()
+  if (layers.length < 1)
+    return
+
+  layers.forEach((layer) => {
+    const geomanLayer = layer as L.Layer & {
+      pm?: {
+        disable?: () => void
+        enable?: (options?: Record<string, unknown>) => void
+      }
+    }
+
+    if (!geomanLayer.pm)
+      return
+
+    if (enabled) {
+      // 编辑只作用于当前选中的要素，避免误触把整个图层都置为可编辑状态。
+      geomanLayer.pm.enable?.({
+        allowEditing: true,
+        allowRotation: false,
+        allowScale: false,
+        draggable: false,
+      })
+      return
+    }
+
+    geomanLayer.pm.disable?.()
+  })
 }
 
 async function handleSubmit() {

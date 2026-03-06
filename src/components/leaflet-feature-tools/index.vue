@@ -7,7 +7,7 @@ import type {
 } from './context'
 import * as L from 'leaflet'
 
-import { computed, nextTick, onBeforeUnmount, provide, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import BtnAdd from './btnAdd.vue'
 import BtnDel from './btnDel.vue'
 import BtnEdit from './btnEdit.vue'
@@ -54,9 +54,11 @@ const curFeatures = ref<DemoFeature[]>([])
 const isMultipleMode = ref(false)
 const enableMapClickEvents = ref(true)
 const isControlMounted = ref(false)
+const operationPanelPlacement = ref<'left' | 'right' | 'top' | 'bottom'>('left')
 const featureToolsContainerRef = ref<HTMLDivElement | null>(null)
 const polygonGroup = L.featureGroup()
 const featureToolsControl = L.control({ position: props.position })
+let placementAnimationFrameId = 0
 
 const map = computed(() => props.map)
 const pm = computed(() => (map.value as (L.Map & { pm?: GeomanInstance }) | null)?.pm ?? null)
@@ -94,6 +96,52 @@ function componentClass(componentName: string) {
   return activeComponent.value === componentName
     ? 'feature-tools-btn-active'
     : 'feature-tools-btn-disabled'
+}
+
+function scheduleOperationPanelPlacement() {
+  if (placementAnimationFrameId)
+    window.cancelAnimationFrame(placementAnimationFrameId)
+
+  placementAnimationFrameId = window.requestAnimationFrame(() => {
+    placementAnimationFrameId = 0
+    updateOperationPanelPlacement()
+  })
+}
+
+function updateOperationPanelPlacement() {
+  if (!activeComponent.value || !featureToolsContainerRef.value)
+    return
+
+  const activeButton = featureToolsContainerRef.value.querySelector('.feature-tools-btn-active') as HTMLElement | null
+  const operationPanel = activeButton?.querySelector('.operation-panel') as HTMLElement | null
+  const mapContainer = map.value?.getContainer()
+  if (!activeButton || !operationPanel || !mapContainer)
+    return
+
+  const safeGap = 8
+  const buttonRect = activeButton.getBoundingClientRect()
+  const panelRect = operationPanel.getBoundingClientRect()
+  const mapRect = mapContainer.getBoundingClientRect()
+  const panelWidth = Math.max(panelRect.width, 136)
+  const panelHeight = Math.max(panelRect.height, 42)
+
+  const leftSpace = buttonRect.left - mapRect.left - safeGap
+  const rightSpace = mapRect.right - buttonRect.right - safeGap
+  const topSpace = buttonRect.top - mapRect.top - safeGap
+  const bottomSpace = mapRect.bottom - buttonRect.bottom - safeGap
+
+  // 优先沿水平方向展开，只有在左右都放不下时才切换到上下，减少鼠标移动距离。
+  if (leftSpace >= panelWidth || rightSpace >= panelWidth) {
+    operationPanelPlacement.value = rightSpace > leftSpace ? 'right' : 'left'
+    return
+  }
+
+  if (topSpace >= panelHeight || bottomSpace >= panelHeight) {
+    operationPanelPlacement.value = bottomSpace > topSpace ? 'bottom' : 'top'
+    return
+  }
+
+  operationPanelPlacement.value = rightSpace >= leftSpace ? 'right' : 'left'
 }
 
 function drawFeature(feature: DemoFeature) {
@@ -145,6 +193,7 @@ function handleClickComponent(componentName: string) {
   }
 
   setActiveComponent(componentName)
+  scheduleOperationPanelPlacement()
 }
 
 function handleCloseComponent() {
@@ -236,6 +285,26 @@ watch(
   { immediate: true },
 )
 
+watch(
+  () => activeComponent.value,
+  async (componentName) => {
+    if (!componentName) {
+      operationPanelPlacement.value = 'left'
+      return
+    }
+
+    await nextTick()
+    scheduleOperationPanelPlacement()
+  },
+)
+
+function handleViewportResize() {
+  if (!activeComponent.value)
+    return
+
+  scheduleOperationPanelPlacement()
+}
+
 provide(FEATURE_TOOLS_INJECTION_KEY, {
   activeComponent,
   clearPolygonGroup,
@@ -257,8 +326,16 @@ provide(FEATURE_TOOLS_INJECTION_KEY, {
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleViewportResize)
+  if (placementAnimationFrameId)
+    window.cancelAnimationFrame(placementAnimationFrameId)
+  placementAnimationFrameId = 0
   unmountControl()
   emit('close')
+})
+
+onMounted(() => {
+  window.addEventListener('resize', handleViewportResize)
 })
 </script>
 
@@ -280,7 +357,12 @@ onBeforeUnmount(() => {
       <component
         :is="item.component"
         class="feature-tools-btn"
-        :class="componentClass(item.key)"
+        :class="[
+          componentClass(item.key),
+          activeComponent === item.key
+            ? `operation-panel-placement-${operationPanelPlacement}`
+            : '',
+        ]"
         @click="handleClickComponent(item.key)"
         @close="handleCloseComponent"
       />
@@ -351,9 +433,6 @@ onBeforeUnmount(() => {
 
 :deep(.operation-panel) {
   position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  transform: none;
   padding: 8px 10px;
   display: flex;
   align-items: center;
@@ -363,6 +442,37 @@ onBeforeUnmount(() => {
   border-radius: 10px;
   backdrop-filter: blur(8px);
   box-shadow: 0 6px 16px rgb(0 0 0 / 35%);
+  z-index: 2;
+}
+
+:deep(.operation-panel-placement-left .operation-panel) {
+  top: 50%;
+  right: calc(100% + 8px);
+  left: auto;
+  transform: translateY(-50%);
+}
+
+:deep(.operation-panel-placement-right .operation-panel) {
+  top: 50%;
+  left: calc(100% + 8px);
+  right: auto;
+  transform: translateY(-50%);
+}
+
+:deep(.operation-panel-placement-top .operation-panel) {
+  bottom: calc(100% + 8px);
+  left: 50%;
+  top: auto;
+  right: auto;
+  transform: translateX(-50%);
+}
+
+:deep(.operation-panel-placement-bottom .operation-panel) {
+  top: calc(100% + 8px);
+  left: 50%;
+  bottom: auto;
+  right: auto;
+  transform: translateX(-50%);
 }
 
 :deep(.operation-btn) {
@@ -389,9 +499,25 @@ onBeforeUnmount(() => {
   }
 
   :deep(.operation-panel) {
-    max-width: min(90vw, 260px);
+    max-width: min(80vw, 240px);
     flex-wrap: wrap;
     justify-content: flex-end;
+  }
+
+  :deep(.operation-panel-placement-left .operation-panel) {
+    right: calc(100% + 6px);
+  }
+
+  :deep(.operation-panel-placement-right .operation-panel) {
+    left: calc(100% + 6px);
+  }
+
+  :deep(.operation-panel-placement-top .operation-panel) {
+    bottom: calc(100% + 6px);
+  }
+
+  :deep(.operation-panel-placement-bottom .operation-panel) {
+    top: calc(100% + 6px);
   }
 
   :deep(.operation-btn) {
