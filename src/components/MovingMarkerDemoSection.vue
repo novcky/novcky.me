@@ -649,53 +649,62 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="moving-player-controls">
-            <div class="moving-player-buttons">
-              <n-tooltip trigger="hover">
-                <template #trigger>
-                  <n-button
-                    :disabled="!hasTrajectory"
-                    class="moving-control-btn moving-icon-btn"
-                    round
-                    size="small"
-                    type="primary"
-                    @click="togglePlay"
-                  >
-                    <span class="moving-control-icon">{{ player.status === 'play' ? '⏸' : '▶' }}</span>
-                  </n-button>
-                </template>
-                {{ player.status === 'play' ? '暂停' : '播放' }}
-              </n-tooltip>
-              <n-tooltip trigger="hover">
-                <template #trigger>
-                  <n-button
-                    :disabled="!hasTrajectory || player.status === 'stop'"
-                    class="moving-control-btn moving-icon-btn"
-                    round
-                    size="small"
-                    type="error"
-                    @click="stopPlayer"
-                  >
-                    <span class="moving-control-icon">⏹</span>
-                  </n-button>
-                </template>
-                停止
-              </n-tooltip>
-              <n-dropdown
-                :disabled="!hasTrajectory"
-                :options="speedDropdownOptions"
-                placement="top-start"
-                trigger="click"
-                @select="handleSpeedSelect"
-              >
-                <n-button
-                  class="moving-control-btn moving-speed-btn"
-                  round
-                  size="small"
-                  type="info"
+            <div class="moving-player-controls-main">
+              <div class="moving-player-buttons">
+                <n-tooltip trigger="hover">
+                  <template #trigger>
+                    <n-button
+                      :disabled="!hasTrajectory"
+                      class="moving-control-btn moving-icon-btn"
+                      round
+                      size="small"
+                      type="primary"
+                      @click="togglePlay"
+                    >
+                      <span class="moving-control-icon">{{ player.status === 'play' ? '⏸' : '▶' }}</span>
+                    </n-button>
+                  </template>
+                  {{ player.status === 'play' ? '暂停' : '播放' }}
+                </n-tooltip>
+                <n-tooltip trigger="hover">
+                  <template #trigger>
+                    <n-button
+                      :disabled="!hasTrajectory || player.status === 'stop'"
+                      class="moving-control-btn moving-icon-btn"
+                      round
+                      size="small"
+                      type="error"
+                      @click="stopPlayer"
+                    >
+                      <span class="moving-control-icon">⏹</span>
+                    </n-button>
+                  </template>
+                  停止
+                </n-tooltip>
+                <n-dropdown
+                  :disabled="!hasTrajectory"
+                  :options="speedDropdownOptions"
+                  placement="top-start"
+                  trigger="click"
+                  @select="handleSpeedSelect"
                 >
-                  {{ speedButtonText }}
-                </n-button>
-              </n-dropdown>
+                  <n-button
+                    class="moving-control-btn moving-speed-btn"
+                    round
+                    size="small"
+                    type="info"
+                  >
+                    {{ speedButtonText }}
+                  </n-button>
+                </n-dropdown>
+              </div>
+              <div class="moving-player-time">
+                <span>{{ currentTimeText }}</span>
+                <span class="moving-player-time-separator">/</span>
+                <span>{{ endTimeText }}</span>
+              </div>
+            </div>
+            <div class="moving-player-switches">
               <div class="moving-loop-toggle">
                 <n-switch
                   v-model:value="player.followViewEnabled"
@@ -712,11 +721,6 @@ onBeforeUnmount(() => {
                 />
                 <span>循环播放</span>
               </div>
-            </div>
-            <div class="moving-player-time">
-              <span>{{ currentTimeText }}</span>
-              <span class="moving-player-time-separator">/</span>
-              <span>{{ endTimeText }}</span>
             </div>
           </div>
         </div>
@@ -826,10 +830,15 @@ onBeforeUnmount(() => {
 
 .moving-player-controls {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.moving-player-controls-main {
+  display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 8px 12px;
-  flex-wrap: wrap;
 }
 
 .moving-player-buttons {
@@ -861,11 +870,17 @@ onBeforeUnmount(() => {
   min-width: 96px;
 }
 
+.moving-player-switches {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: rgb(238 243 252 / 82%);
+}
+
 .moving-loop-toggle {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: rgb(238 243 252 / 82%);
   font-size: 12px;
   user-select: none;
 }
@@ -902,7 +917,29 @@ onBeforeUnmount(() => {
   }
 
   .moving-player-time {
+    margin-left: auto;
+  }
+
+  .moving-player-switches {
     width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .moving-loop-toggle {
+    width: 100%;
+    justify-content: space-between;
+    padding: 0 2px;
+    font-size: 12px;
+  }
+
+  .moving-player-controls-main {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .moving-player-time {
     justify-content: flex-end;
   }
 
