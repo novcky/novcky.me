@@ -34,6 +34,7 @@ export class MovingMarker extends Leaflet.Marker {
   private currentDuration = 0
   private currentIndex = 0
   private currentLine: LeafletTypes.LatLng[] = []
+  private lineProgressOffset = 0
   private stations: StationDurationMap = {}
   private state = MovingMarkerState.NotStarted
   private startTime = 0
@@ -119,8 +120,28 @@ export class MovingMarker extends Leaflet.Marker {
     if (!this.isPaused())
       return
 
-    this.currentLine[0] = this.getLatLng()
-    this.currentDuration -= this.pauseStartTime - this.startTime
+    const currentLatLng = this.getLatLng()
+    const lineStart = this.currentLine[0]
+    const lineEnd = this.currentLine[1]
+
+    // 恢复播放时会把当前段起点重置到“当前位置”；若不保留已走比例，外部进度会被回退到整点索引。
+    const lineDistance = lineStart?.distanceTo(lineEnd) ?? 0
+    const passedDistance = lineStart?.distanceTo(currentLatLng) ?? 0
+    const relativeConsumedProgress = lineDistance > 0
+      ? Math.min(Math.max(passedDistance / lineDistance, 0), 1)
+      : 0
+    // currentLine[0] 可能已是上次恢复时的“中间点”，需要叠加历史偏移，避免连续调速时进度再次回退。
+    const consumedProgress = Math.min(
+      Math.max(
+        this.lineProgressOffset + relativeConsumedProgress * (1 - this.lineProgressOffset),
+        0,
+      ),
+      1,
+    )
+
+    this.currentLine[0] = currentLatLng
+    this.currentDuration *= (1 - relativeConsumedProgress)
+    this.lineProgressOffset = consumedProgress
 
     // 调速后必须重算当前分段剩余时长，否则会出现“瞬移”或“卡死”的体验问题。
     if (speedOffset > 0) {
@@ -264,6 +285,7 @@ export class MovingMarker extends Leaflet.Marker {
     this.currentIndex = index
     this.currentDuration = this.durations[index]
     this.currentLine = this.latlngs.slice(index, index + 2)
+    this.lineProgressOffset = 0
   }
 
   private updateLine(frameTimestamp: number) {
@@ -326,9 +348,13 @@ export class MovingMarker extends Leaflet.Marker {
         elapsedTime,
       )
       this.setLatLng(nextPosition)
-      const lineProgress = this.currentDuration > 0
+      const rawLineProgress = this.currentDuration > 0
         ? Math.min(Math.max(elapsedTime / this.currentDuration, 0), 1)
         : 0
+      const lineProgress = Math.min(
+        Math.max(this.lineProgressOffset + rawLineProgress * (1 - this.lineProgressOffset), 0),
+        1,
+      )
       this.fire('updateProgress', {
         lineIndex: this.currentIndex,
         lineProgress,
