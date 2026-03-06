@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type * as L from 'leaflet'
 import type { FeatureRepository, NoticeType } from '@/components/leaflet-feature-tools/context'
+import type { BaseTileLayerController } from '@/lib/tileLayer'
 
 import * as Leaflet from 'leaflet'
 import { onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
@@ -9,6 +10,7 @@ import FeatureTools from '@/components/leaflet-feature-tools/index.vue'
 import { drawPolygon } from '@/components/leaflet-feature-tools/tools'
 import { useLeafletFeatureStore } from '@/composables/useLeafletFeatureStore'
 import { initialLeafletFeatures } from '@/constants/leafletFeatures'
+import { attachBaseTileLayer } from '@/lib/tileLayer'
 
 interface Notice {
   id: number
@@ -23,6 +25,7 @@ interface ConfirmState {
 
 const mapElement = ref<HTMLDivElement | null>(null)
 const mapInstance = shallowRef<L.Map | null>(null)
+const tileLayerController = shallowRef<BaseTileLayerController | null>(null)
 const featureLayerGroup = Leaflet.featureGroup()
 
 const { addFeatures, deleteFeatures, features, queryByPoint, updateFeatureGeometry } = useLeafletFeatureStore(initialLeafletFeatures)
@@ -140,10 +143,11 @@ onMounted(() => {
   })
 
   Leaflet.control.zoom({ position: 'topright' }).addTo(map)
-  Leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors',
-  }).addTo(map)
+  tileLayerController.value = attachBaseTileLayer(map, {
+    onFallback: (previousSourceName, nextSourceName) => {
+      notify('warning', `底图源「${previousSourceName}」不可达，已切换到「${nextSourceName}」`)
+    },
+  })
 
   featureLayerGroup.addTo(map)
   renderFeatureLayer()
@@ -166,6 +170,8 @@ onBeforeUnmount(() => {
     confirmResolver(false)
   confirmResolver = null
 
+  tileLayerController.value?.dispose()
+  tileLayerController.value = null
   featureLayerGroup.clearLayers()
   mapInstance.value?.remove()
   mapInstance.value = null
@@ -220,7 +226,7 @@ onBeforeUnmount(() => {
         <div class="confirm-actions">
           <n-button
             class="confirm-btn"
-            quaternary
+            type="warning"
             @click="resolveConfirm(false)"
           >
             取 消

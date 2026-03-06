@@ -1,21 +1,25 @@
 <script setup lang="ts">
 import type * as L from 'leaflet'
 import type { TrajectoryRecord } from '@/constants/movingTrajectory'
-
 import type { MovingMarker } from '@/lib/movingMarker'
+import type { BaseTileLayerController } from '@/lib/tileLayer'
 import * as Leaflet from 'leaflet'
 
 import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
 import { movingTrajectoryData } from '@/constants/movingTrajectory'
 import { createMovingMarker } from '@/lib/movingMarker'
+import { attachBaseTileLayer } from '@/lib/tileLayer'
 
 type PlayerStatus = 'stop' | 'play' | 'pause'
 
 const mapElement = ref<HTMLDivElement | null>(null)
 const mapInstance = shallowRef<L.Map | null>(null)
+const tileLayerController = shallowRef<BaseTileLayerController | null>(null)
 const movingMarker = shallowRef<MovingMarker | null>(null)
 const routePolyline = shallowRef<L.Polyline | null>(null)
+const routePassedPolyline = shallowRef<L.Polyline | null>(null)
 const endpointMarkers = shallowRef<[L.CircleMarker | null, L.CircleMarker | null]>([null, null])
+const isSeeking = ref(false)
 
 const trajectoryLatlngs = movingTrajectoryData.map(item => Leaflet.latLng(item.lat, item.lng))
 
@@ -30,33 +34,76 @@ const player = reactive({
   speedCheckpoint: null as number | null,
   speedOffset: 0,
   speedOptions: [
-    { label: '1.0x', value: 1 },
-    { label: '1.5x', value: 1.5 },
-    { label: '2.0x', value: 2 },
-    { label: '5.0x', value: 5 },
     { label: '10.0x', value: 10 },
+    { label: '5.0x', value: 5 },
+    { label: '2.0x', value: 2 },
+    { label: '1.0x', value: 1 },
+    { label: '0.75x', value: 0.75 },
+    { label: '0.5x', value: 0.5 },
+    { label: '0.1x', value: 0.1 },
   ],
+})
+
+const speedButtonText = computed(() => {
+  if (player.selectSpeed === 1)
+    return '倍速'
+
+  const option = player.speedOptions.find(item => item.value === player.selectSpeed)
+  return option?.label ?? `${player.selectSpeed}x`
+})
+
+const speedDropdownOptions = computed(() => {
+  return player.speedOptions.map(option => ({
+    key: option.value,
+    label: option.value === player.selectSpeed
+      ? `✓ ${option.label}`
+      : option.label,
+  }))
 })
 
 const hasTrajectory = computed(() => trajectoryLatlngs.length > 1)
 
-const currentRecord = computed<TrajectoryRecord | null>(() => {
-  return movingTrajectoryData[player.sliderValue] ?? null
+const currentRecordIndex = computed(() => {
+  const maxIndex = Math.max(movingTrajectoryData.length - 1, 0)
+  return Math.min(Math.max(Math.floor(player.sliderValue), 0), maxIndex)
 })
 
-const currentTimeText = computed(() => formatTime(currentRecord.value?.recordTime))
+const currentRecord = computed<TrajectoryRecord | null>(() => {
+  return movingTrajectoryData[currentRecordIndex.value] ?? null
+})
+
+const currentTimeText = computed(() => {
+  const startIndex = currentRecordIndex.value
+  const endIndex = Math.min(startIndex + 1, movingTrajectoryData.length - 1)
+  const startTimeText = movingTrajectoryData[startIndex]?.recordTime
+  const endTimeTextValue = movingTrajectoryData[endIndex]?.recordTime
+  if (!startTimeText || !endTimeTextValue)
+    return formatTime(startTimeText)
+
+  const startTimestamp = new Date(startTimeText).getTime()
+  const endTimestamp = new Date(endTimeTextValue).getTime()
+  if (Number.isNaN(startTimestamp) || Number.isNaN(endTimestamp))
+    return formatTime(startTimeText)
+
+  // 进度条改为连续值后，时间显示也需要按分段比例插值，否则会继续“一格一格跳”。
+  const lineProgress = Math.min(Math.max(player.sliderValue - startIndex, 0), 1)
+  const currentTimestamp = startTimestamp + (endTimestamp - startTimestamp) * lineProgress
+  return new Date(currentTimestamp).toLocaleString('zh-CN', { hour12: false })
+})
+
 const endTimeText = computed(() => formatTime(movingTrajectoryData.at(-1)?.recordTime))
 const userNameText = computed(() => currentRecord.value?.userName ?? '-')
 const workAreaText = computed(() => currentRecord.value?.workArea ?? '-')
 const lineNameText = computed(() => currentRecord.value?.lineName ?? '-')
 const speedText = computed(() => currentRecord.value?.speed ?? 0)
-const progressPercentage = computed(() => {
-  const total = player.sliderMax - player.sliderMin
-  if (total <= 0)
-    return 0
 
-  return Math.round(((player.sliderValue - player.sliderMin) / total) * 100)
-})
+function handleSpeedSelect(value: string | number) {
+  const nextSpeed = Number(value)
+  if (!Number.isFinite(nextSpeed))
+    return
+
+  player.selectSpeed = nextSpeed
+}
 
 watch(
   () => player.selectSpeed,
@@ -125,6 +172,46 @@ function normalizeSliderValue(value: number | number[]) {
     : value
 }
 
+function getLatlngByProgress(progress: number) {
+  if (trajectoryLatlngs.length < 2)
+    return trajectoryLatlngs[0]
+
+  const pointMaxIndex = trajectoryLatlngs.length - 1
+  const clampedProgress = Math.min(Math.max(progress, player.sliderMin), pointMaxIndex)
+  const lineIndex = Math.min(Math.floor(clampedProgress), pointMaxIndex - 1)
+  const lineProgress = Math.min(Math.max(clampedProgress - lineIndex, 0), 1)
+  const startPoint = trajectoryLatlngs[lineIndex]
+  const endPoint = trajectoryLatlngs[lineIndex + 1]
+  return Leaflet.latLng(
+    startPoint.lat + (endPoint.lat - startPoint.lat) * lineProgress,
+    startPoint.lng + (endPoint.lng - startPoint.lng) * lineProgress,
+  )
+}
+
+function buildPassedPathByProgress(progress: number) {
+  if (trajectoryLatlngs.length === 0)
+    return [] as L.LatLng[]
+
+  if (trajectoryLatlngs.length === 1)
+    return [trajectoryLatlngs[0]]
+
+  const pointMaxIndex = trajectoryLatlngs.length - 1
+  const clampedProgress = Math.min(Math.max(progress, player.sliderMin), pointMaxIndex)
+  const lineIndex = Math.min(Math.floor(clampedProgress), pointMaxIndex - 1)
+  const passedPath = trajectoryLatlngs.slice(0, lineIndex + 1)
+
+  const segmentOffset = Math.min(Math.max(clampedProgress - lineIndex, 0), 1)
+  const interpolatedPoint = getLatlngByProgress(clampedProgress)
+  if (interpolatedPoint && segmentOffset > 0)
+    passedPath.push(interpolatedPoint)
+
+  return passedPath
+}
+
+function updatePassedPathByProgress(progress: number) {
+  routePassedPolyline.value?.setLatLngs(buildPassedPathByProgress(progress))
+}
+
 function updateMarkerTooltip() {
   const marker = movingMarker.value
   if (!marker)
@@ -139,26 +226,37 @@ function updateMarkerTooltip() {
 }
 
 function handleSliderUpdate(value: number | number[]) {
-  const targetIndex = clampSliderValue(Number(normalizeSliderValue(value)))
-  setSliderValue(targetIndex)
+  const targetProgress = clampSliderValue(Number(normalizeSliderValue(value)))
+  isSeeking.value = true
+  setSliderValue(targetProgress)
 
   const marker = movingMarker.value
-  if (!marker)
+  if (!marker) {
+    isSeeking.value = false
     return
+  }
 
   if (!marker.isPaused())
     marker.pause()
 
-  marker.setLatLng(trajectoryLatlngs[targetIndex])
+  const nextLatlng = getLatlngByProgress(targetProgress)
+  if (nextLatlng)
+    marker.setLatLng(nextLatlng)
+
+  updatePassedPathByProgress(targetProgress)
   updateMarkerTooltip()
 }
 
-function handleSliderDragEnd() {
+function handleSliderSeekCommit() {
   const marker = movingMarker.value
-  if (!marker)
+  if (!marker) {
+    isSeeking.value = false
     return
+  }
 
-  marker.playFromLine(player.sliderValue)
+  marker.playFromProgress(player.sliderValue)
+  updatePassedPathByProgress(player.sliderValue)
+  isSeeking.value = false
   if (player.status !== 'play') {
     // 拖拽定位会临时触发内部播放状态，这里需要立刻回退，避免暂停态被意外改成播放态。
     window.setTimeout(() => {
@@ -185,7 +283,7 @@ function playPlayer() {
     if (player.sliderValue >= player.sliderMax)
       setSliderValue(0)
 
-    marker.playFromLine(player.sliderValue)
+    marker.playFromProgress(player.sliderValue)
   }
   else if (marker.isPaused()) {
     marker.resume(player.speedOffset)
@@ -215,8 +313,10 @@ function stopPlayer() {
 
   marker.stop()
   player.status = 'stop'
+  isSeeking.value = false
   setSliderValue(0)
   marker.setLatLng(trajectoryLatlngs[0])
+  updatePassedPathByProgress(0)
   updateMarkerTooltip()
 }
 
@@ -225,10 +325,18 @@ function initTrajectoryLayers(map: L.Map) {
     return
 
   routePolyline.value = Leaflet.polyline(trajectoryLatlngs, {
-    color: '#67C23A',
+    color: '#7d8ea8',
     weight: 3,
-    opacity: 0.85,
+    opacity: 0.7,
     dashArray: '8 8',
+  }).addTo(map)
+
+  routePassedPolyline.value = Leaflet.polyline(buildPassedPathByProgress(0), {
+    color: '#409EFF',
+    weight: 4,
+    opacity: 0.95,
+    lineCap: 'round',
+    lineJoin: 'round',
   }).addTo(map)
 
   endpointMarkers.value[0] = Leaflet.circleMarker(trajectoryLatlngs[0], {
@@ -258,6 +366,11 @@ function destroyTrajectoryLayers() {
   if (routePolyline.value) {
     map.removeLayer(routePolyline.value)
     routePolyline.value = null
+  }
+
+  if (routePassedPolyline.value) {
+    map.removeLayer(routePassedPolyline.value)
+    routePassedPolyline.value = null
   }
 
   endpointMarkers.value.forEach((marker, index) => {
@@ -302,24 +415,30 @@ function initMovingMarkerLayer(map: L.Map) {
     player.status = 'play'
   })
 
-  marker.on('updateLine', (event: L.LeafletEvent & { lineIndex?: number }) => {
-    const lineIndex = typeof event.lineIndex === 'number'
-      ? event.lineIndex
-      : 0
+  marker.on('updateProgress', (event: L.LeafletEvent & { progress?: number }) => {
+    if (isSeeking.value || typeof event.progress !== 'number')
+      return
 
-    setSliderValue(lineIndex)
-    updateMarkerTooltip()
+    setSliderValue(event.progress)
+    updatePassedPathByProgress(event.progress)
+  })
+
+  marker.on('updateLine', (event: L.LeafletEvent & { lineIndex?: number }) => {
+    if (typeof event.lineIndex === 'number')
+      updateMarkerTooltip()
   })
 
   marker.on('end', () => {
     player.status = 'stop'
     setSliderValue(player.sliderMax)
+    updatePassedPathByProgress(player.sliderMax)
     updateMarkerTooltip()
   })
 
   marker.on('loop', () => {
     player.status = 'play'
     setSliderValue(0)
+    updatePassedPathByProgress(0)
     updateMarkerTooltip()
   })
 
@@ -334,6 +453,7 @@ function destroyMovingMarkerLayer() {
     return
 
   marker.off('start')
+  marker.off('updateProgress')
   marker.off('updateLine')
   marker.off('end')
   marker.off('loop')
@@ -363,10 +483,7 @@ onMounted(() => {
   })
 
   Leaflet.control.zoom({ position: 'topright' }).addTo(map)
-  Leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors',
-  }).addTo(map)
+  tileLayerController.value = attachBaseTileLayer(map)
 
   mapInstance.value = map
   initTrajectoryLayers(map)
@@ -376,6 +493,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   destroyMovingMarkerLayer()
   destroyTrajectoryLayers()
+  tileLayerController.value?.dispose()
+  tileLayerController.value = null
   mapInstance.value?.remove()
   mapInstance.value = null
 })
@@ -386,88 +505,94 @@ onBeforeUnmount(() => {
     <h2>轨迹回放（MovingMarker）</h2>
 
     <div class="moving-demo-layout">
-      <div
-        ref="mapElement"
-        class="map moving-demo-map"
-        aria-label="轨迹回放地图"
-      />
-
-      <div class="moving-player">
+      <div class="moving-map-stage">
         <div
-          v-if="!hasTrajectory"
-          class="moving-player-mask"
-        >
-          暂无轨迹数据
-        </div>
+          ref="mapElement"
+          class="map moving-demo-map"
+          aria-label="轨迹回放地图"
+        />
 
-        <header class="moving-player-header">
+        <div class="moving-player-meta">
           <strong class="moving-player-name">{{ userNameText }}</strong>
           <span class="moving-player-area">{{ workAreaText }}</span>
-        </header>
-
-        <div class="moving-player-progress">
-          <n-progress
-            :percentage="progressPercentage"
-            :show-indicator="false"
-            class="moving-progress-bar"
-            type="line"
-          />
-          <n-slider
-            :value="player.sliderValue"
-            :min="player.sliderMin"
-            :max="player.sliderMax"
-            :disabled="!hasTrajectory"
-            :step="1"
-            :tooltip="false"
-            class="moving-slider"
-            @update:value="handleSliderUpdate"
-            @dragend="handleSliderDragEnd"
-          />
-          <div class="moving-player-time">
-            <span>{{ currentTimeText }}</span>
-            <span>{{ endTimeText }}</span>
-          </div>
+          <span class="moving-player-line">{{ lineNameText }} · {{ speedText }} km/h</span>
         </div>
 
-        <div class="moving-player-controls">
-          <div class="moving-player-buttons">
-            <n-button
-              :disabled="!hasTrajectory"
-              size="small"
-              type="primary"
-              @click="togglePlay"
-            >
-              {{ player.status === 'play' ? '暂停' : '播放' }}
-            </n-button>
-            <n-button
-              :disabled="!hasTrajectory || player.status === 'stop'"
-              size="small"
-              type="error"
-              @click="stopPlayer"
-            >
-              停止
-            </n-button>
-            <n-select
-              v-model:value="player.selectSpeed"
-              :consistent-menu-width="false"
-              :disabled="!hasTrajectory"
-              :options="player.speedOptions"
-              class="moving-speed-select"
-              size="small"
-            />
-            <div class="moving-loop-toggle">
-              <n-switch
-                v-model:value="player.loopEnabled"
-                :disabled="!hasTrajectory"
-                size="small"
-              />
-              <span>循环播放</span>
-            </div>
+        <div class="moving-player">
+          <div
+            v-if="!hasTrajectory"
+            class="moving-player-mask"
+          >
+            暂无轨迹数据
           </div>
 
-          <div class="moving-player-line">
-            <span>{{ lineNameText }}</span>
-            <span>{{ speedText }} km/h</span>
+          <div class="moving-player-progress">
+            <n-slider
+              :value="player.sliderValue"
+              :min="player.sliderMin"
+              :max="player.sliderMax"
+              :disabled="!hasTrajectory"
+              :step="0.001"
+              :tooltip="false"
+              class="moving-slider"
+              @update:value="handleSliderUpdate"
+              @dragend="handleSliderSeekCommit"
+              @change="handleSliderSeekCommit"
+            />
+          </div>
+
+          <div class="moving-player-controls">
+            <div class="moving-player-buttons">
+              <n-button
+                :disabled="!hasTrajectory"
+                class="moving-control-btn"
+                round
+                size="small"
+                type="primary"
+                @click="togglePlay"
+              >
+                {{ player.status === 'play' ? '暂停' : '播放' }}
+              </n-button>
+              <n-button
+                :disabled="!hasTrajectory || player.status === 'stop'"
+                class="moving-control-btn"
+                round
+                size="small"
+                type="error"
+                @click="stopPlayer"
+              >
+                停止
+              </n-button>
+              <n-dropdown
+                :disabled="!hasTrajectory"
+                :options="speedDropdownOptions"
+                placement="top-start"
+                trigger="click"
+                @select="handleSpeedSelect"
+              >
+                <n-button
+                  class="moving-control-btn"
+                  round
+                  size="small"
+                  type="info"
+                >
+                  {{ speedButtonText }}
+                </n-button>
+              </n-dropdown>
+              <div class="moving-loop-toggle">
+                <n-switch
+                  v-model:value="player.loopEnabled"
+                  :disabled="!hasTrajectory"
+                  size="small"
+                />
+                <span>循环</span>
+              </div>
+            </div>
+            <div class="moving-player-time">
+              <span>{{ currentTimeText }}</span>
+              <span class="moving-player-time-separator">/</span>
+              <span>{{ endTimeText }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -478,23 +603,59 @@ onBeforeUnmount(() => {
 <style scoped>
 .moving-demo-layout {
   padding: 12px;
-  display: grid;
-  gap: 12px;
+}
+
+.moving-map-stage {
+  position: relative;
 }
 
 .moving-demo-map {
   height: 620px;
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.moving-player-meta {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 400;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgb(11 16 32 / 62%);
+  border: 1px solid rgb(255 255 255 / 24%);
+  border-radius: 10px;
+  backdrop-filter: blur(8px);
+}
+
+.moving-player-name {
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.moving-player-area,
+.moving-player-line {
+  color: rgb(238 243 252 / 82%);
+  font-size: 12px;
 }
 
 .moving-player {
-  position: relative;
-  padding: 14px 16px;
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  left: 14px;
+  z-index: 410;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  background: rgb(255 255 255 / 4%);
-  border: 1px solid var(--panel-border);
-  border-radius: 14px;
+  gap: 10px;
+  background: linear-gradient(180deg, rgb(11 16 32 / 62%) 0%, rgb(11 16 32 / 86%) 100%);
+  border: 1px solid rgb(255 255 255 / 24%);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
 }
 
 .moving-player-mask {
@@ -504,35 +665,15 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  color: var(--muted-2);
+  color: rgb(238 243 252 / 88%);
   background: rgb(11 16 32 / 70%);
-  border-radius: 14px;
-}
-
-.moving-player-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.moving-player-name {
-  font-size: 18px;
-}
-
-.moving-player-area {
-  color: var(--muted);
-  font-size: 13px;
+  border-radius: 12px;
 }
 
 .moving-player-progress {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-
-.moving-progress-bar {
-  margin-bottom: 2px;
+  gap: 6px;
 }
 
 .moving-slider {
@@ -540,46 +681,64 @@ onBeforeUnmount(() => {
 }
 
 .moving-player-time {
-  display: flex;
-  justify-content: space-between;
-  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  color: rgb(238 243 252 / 82%);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  background: rgb(255 255 255 / 8%);
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 999px;
+}
+
+.moving-player-time-separator {
+  color: rgb(238 243 252 / 55%);
 }
 
 .moving-player-controls {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px 14px;
+  gap: 8px 12px;
   flex-wrap: wrap;
 }
 
 .moving-player-buttons {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
 }
 
-.moving-speed-select {
-  width: 96px;
+.moving-control-btn {
+  min-width: 70px;
+}
+
+.moving-speed-btn {
+  min-width: 96px;
 }
 
 .moving-loop-toggle {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: var(--muted);
-  font-size: 13px;
+  color: rgb(238 243 252 / 82%);
+  font-size: 12px;
   user-select: none;
 }
 
-.moving-player-line {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  color: var(--muted);
-  font-size: 14px;
+:deep(.moving-slider .n-slider-rail) {
+  background: rgb(255 255 255 / 20%);
+}
+
+:deep(.moving-slider .n-slider-rail__fill) {
+  background: #409EFF;
 }
 
 @media (max-width: 860px) {
@@ -587,13 +746,31 @@ onBeforeUnmount(() => {
     height: 560px;
   }
 
-  .moving-player-header {
-    flex-wrap: wrap;
+  .moving-player-meta {
+    top: 8px;
+    right: 8px;
+    left: 8px;
   }
 
-  .moving-player-line {
+  .moving-player {
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    padding: 10px;
+  }
+
+  .moving-player-buttons {
     width: 100%;
-    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .moving-player-time {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .moving-speed-btn {
+    min-width: 88px;
   }
 }
 

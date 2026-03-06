@@ -288,69 +288,105 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .feature-tools-container {
-  margin-bottom: 160px;
+  margin-bottom: 18px;
   display: none;
   flex-direction: column;
-  background: #fff;
-  border: 1px solid rgb(0 0 0 / 20%);
-  border-radius: 4px;
-  box-shadow: rgb(0 0 0 / 20%) 0 0 10px;
+  overflow: visible;
+  background: linear-gradient(180deg, rgb(9 17 36 / 82%) 0%, rgb(9 17 36 / 92%) 100%);
+  border: 1px solid rgb(255 255 255 / 24%);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  box-shadow: rgb(0 0 0 / 34%) 0 8px 22px;
 }
 
 .feature-tools-divider {
   width: 100%;
   height: 1px;
-  background: rgb(0 0 0 / 10%);
+  background: rgb(255 255 255 / 16%);
 }
 
 :deep(.feature-tools-btn) {
   position: relative;
-  padding: 10px 14px 8px;
+  padding: 10px 12px 8px;
+  min-width: 78px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   gap: 2px;
-  font-size: 14px;
-  color: #5b5b5b;
-  background: #ffffff;
-  transition: all 0.3s;
+  font-size: 13px;
+  color: rgb(238 243 252 / 82%);
+  background: transparent;
+  transition: all 0.2s;
   cursor: pointer;
   user-select: none;
 }
 
 :deep(.feature-tools-btn:hover):not(.feature-tools-btn-disabled),
 :deep(.feature-tools-btn-active) {
-  color: #409EFF;
+  color: #ffffff;
+  background: rgb(64 158 255 / 24%);
 }
 
 :deep(.feature-tools-btn-disabled) {
   cursor: not-allowed;
-  opacity: 0.5;
+  opacity: 0.45;
 }
 
 :deep(.tool-icon) {
   width: 22px;
   display: inline-flex;
   justify-content: center;
-  font-size: 18px;
+  font-size: 17px;
   line-height: 1;
 }
 
 :deep(.operation-panel) {
   position: absolute;
-  top: 8%;
-  right: 56px;
-  padding: 0 12px;
-  height: 84%;
+  top: 50%;
+  right: calc(100% + 8px);
+  transform: translateY(-50%);
+  padding: 8px 10px;
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgb(0 0 0 / 60%);
-  border-radius: 8px 0 0 8px;
+  background: rgb(11 16 32 / 90%);
+  border: 1px solid rgb(255 255 255 / 24%);
+  border-radius: 10px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 6px 16px rgb(0 0 0 / 35%);
 }
 
 :deep(.operation-btn) {
   min-width: 76px;
+}
+
+@media (max-width: 860px) {
+  .feature-tools-container {
+    margin-bottom: 10px;
+  }
+
+  :deep(.feature-tools-btn) {
+    min-width: 68px;
+    padding: 8px 10px 7px;
+    font-size: 12px;
+  }
+
+  :deep(.tool-icon) {
+    font-size: 15px;
+  }
+
+  :deep(.operation-panel) {
+    top: calc(100% + 8px);
+    right: 0;
+    transform: none;
+    max-width: min(86vw, 280px);
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  :deep(.operation-btn) {
+    min-width: 64px;
+  }
 }
 </style>

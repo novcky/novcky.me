@@ -198,6 +198,20 @@ export class MovingMarker extends Leaflet.Marker {
     this.startAnimation()
   }
 
+  public playFromProgress(progress: number) {
+    const maxPointIndex = Math.max(this.latlngs.length - 1, 0)
+    const clampedProgress = Math.min(Math.max(progress, 0), maxPointIndex)
+    const maxLineIndex = Math.max(this.latlngs.length - 2, 0)
+    const lineIndex = Math.min(Math.floor(clampedProgress), maxLineIndex)
+    const lineProgress = Math.min(Math.max(clampedProgress - lineIndex, 0), 1)
+
+    this.stopAnimation()
+    this.loadLine(lineIndex)
+
+    // 从拖拽定位的进度恢复时，需要把分段已走时长带入动画起点，否则会回跳到分段起点。
+    this.startAnimation(this.currentDuration * lineProgress)
+  }
+
   private createDurationsByTotalDuration(latlngs: LeafletTypes.LatLng[], totalDuration: number) {
     const lastIndex = latlngs.length - 1
     const distances: number[] = []
@@ -213,11 +227,11 @@ export class MovingMarker extends Leaflet.Marker {
     return distances.map(distance => distance * durationRatio)
   }
 
-  private startAnimation() {
+  private startAnimation(initialElapsedTime = 0) {
     this.state = MovingMarkerState.Running
     this.animationFrameId = Leaflet.Util.requestAnimFrame((frameTimestamp) => {
-      this.startTime = Date.now()
-      this.startTimestamp = frameTimestamp
+      this.startTime = Date.now() - initialElapsedTime
+      this.startTimestamp = frameTimestamp - initialElapsedTime
       this.animate(frameTimestamp)
     }, this, true)
     this.animationRequested = true
@@ -312,9 +326,24 @@ export class MovingMarker extends Leaflet.Marker {
         elapsedTime,
       )
       this.setLatLng(nextPosition)
+      const lineProgress = this.currentDuration > 0
+        ? Math.min(Math.max(elapsedTime / this.currentDuration, 0), 1)
+        : 0
+      this.fire('updateProgress', {
+        lineIndex: this.currentIndex,
+        lineProgress,
+        progress: this.currentIndex + lineProgress,
+      })
+    }
+    else {
+      this.fire('updateProgress', {
+        lineIndex: this.currentIndex,
+        lineProgress: 1,
+        progress: this.currentIndex + 1,
+      })
     }
 
-    if (skipRequestNextFrame)
+    if (skipRequestNextFrame || !this.isRunning())
       return
 
     this.animationFrameId = Leaflet.Util.requestAnimFrame(
