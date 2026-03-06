@@ -793,7 +793,7 @@ onBeforeUnmount(() => {
                     size="small"
                     type="info"
                   >
-                    {{ speedButtonText }}
+                    <span class="moving-speed-btn-text">{{ speedButtonText }}</span>
                   </n-button>
                 </n-dropdown>
               </div>
@@ -928,6 +928,7 @@ onBeforeUnmount(() => {
   border: 1px solid rgb(255 255 255 / 20%);
   border-radius: 999px;
   flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .moving-player-time-separator {
@@ -942,7 +943,7 @@ onBeforeUnmount(() => {
 }
 
 .moving-player-controls-main {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-width: 0;
 }
 
@@ -971,7 +972,16 @@ onBeforeUnmount(() => {
 }
 
 .moving-speed-btn {
-  min-width: 96px;
+  min-width: 64px;
+  padding-right: 12px;
+  padding-left: 12px;
+}
+
+.moving-speed-btn-text {
+  display: inline-block;
+  min-width: 4.2ch;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .moving-player-switches {
@@ -1003,6 +1013,7 @@ onBeforeUnmount(() => {
 .moving-player-controls--double .moving-player-time {
   flex-basis: 100%;
   justify-content: flex-start;
+  margin-left: 0;
 }
 
 .moving-player-controls--triple .moving-player-controls-main,
@@ -1013,6 +1024,7 @@ onBeforeUnmount(() => {
 
 .moving-player-controls--triple .moving-player-time {
   justify-content: flex-start;
+  margin-left: 0;
 }
 
 @media (max-width: 860px) {
@@ -1039,7 +1051,9 @@ onBeforeUnmount(() => {
   }
 
   .moving-speed-btn {
-    min-width: 88px;
+    min-width: 60px;
+    padding-right: 10px;
+    padding-left: 10px;
   }
 
   .moving-icon-btn {
