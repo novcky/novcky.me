@@ -5,12 +5,13 @@ import type { MovingMarker } from '@/lib/movingMarker'
 import type { BaseTileLayerController } from '@/lib/tileLayer'
 import * as Leaflet from 'leaflet'
 
-import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
 import { movingTrajectoryData } from '@/constants/movingTrajectory'
 import { createMovingMarker } from '@/lib/movingMarker'
 import { attachBaseTileLayer } from '@/lib/tileLayer'
 
 type PlayerStatus = 'stop' | 'play' | 'pause'
+type PlayerControlLayout = 'single' | 'double' | 'triple'
 
 const mapElement = ref<HTMLDivElement | null>(null)
 const mapInstance = shallowRef<L.Map | null>(null)
@@ -20,10 +21,17 @@ const routePolyline = shallowRef<L.Polyline | null>(null)
 const routePassedStaticPolyline = shallowRef<L.Polyline | null>(null)
 const routePassedActivePolyline = shallowRef<L.Polyline | null>(null)
 const endpointMarkers = shallowRef<[L.CircleMarker | null, L.CircleMarker | null]>([null, null])
+const playerControlsRef = ref<HTMLDivElement | null>(null)
+const playerButtonsRef = ref<HTMLDivElement | null>(null)
+const playerSwitchesRef = ref<HTMLDivElement | null>(null)
+const playerTimeRef = ref<HTMLDivElement | null>(null)
+const playerControlLayout = ref<PlayerControlLayout>('single')
 const isSeeking = ref(false)
 const lastPassedLineIndex = ref(-1)
 let followAnimationFrameId = 0
 let pendingFollowLatLng: L.LatLng | null = null
+let controlsLayoutAnimationFrameId = 0
+let controlsLayoutObserver: ResizeObserver | null = null
 
 const trajectoryLatlngs = movingTrajectoryData.map(item => Leaflet.latLng(item.lat, item.lng))
 
@@ -101,6 +109,84 @@ const userNameText = computed(() => currentRecord.value?.userName ?? '-')
 const workAreaText = computed(() => currentRecord.value?.workArea ?? '-')
 const lineNameText = computed(() => currentRecord.value?.lineName ?? '-')
 const speedText = computed(() => currentRecord.value?.speed ?? 0)
+
+function schedulePlayerControlLayoutUpdate() {
+  if (controlsLayoutAnimationFrameId)
+    window.cancelAnimationFrame(controlsLayoutAnimationFrameId)
+
+  controlsLayoutAnimationFrameId = window.requestAnimationFrame(() => {
+    controlsLayoutAnimationFrameId = 0
+    updatePlayerControlLayout()
+  })
+}
+
+function updatePlayerControlLayout() {
+  const controlsElement = playerControlsRef.value
+  const buttonsElement = playerButtonsRef.value
+  const switchesElement = playerSwitchesRef.value
+  const timeElement = playerTimeRef.value
+  if (!controlsElement || !buttonsElement || !switchesElement || !timeElement)
+    return
+
+  const containerWidth = controlsElement.clientWidth
+  if (containerWidth <= 0)
+    return
+
+  const gap = 12
+  const buttonsWidth = buttonsElement.scrollWidth
+  const switchesWidth = switchesElement.scrollWidth
+  const timeWidth = timeElement.scrollWidth
+
+  const singleLineRequiredWidth = buttonsWidth + switchesWidth + timeWidth + gap * 2
+  if (containerWidth >= singleLineRequiredWidth) {
+    playerControlLayout.value = 'single'
+    return
+  }
+
+  // 优先把时间移到下一行；若按钮+开关仍放不下，再降级为三行。
+  const doubleLineRequiredWidth = buttonsWidth + switchesWidth + gap
+  if (containerWidth >= doubleLineRequiredWidth) {
+    playerControlLayout.value = 'double'
+    return
+  }
+
+  playerControlLayout.value = 'triple'
+}
+
+function bindPlayerControlLayoutObserver() {
+  if (typeof window === 'undefined')
+    return
+
+  const observerTargets = [
+    playerControlsRef.value,
+    playerButtonsRef.value,
+    playerSwitchesRef.value,
+    playerTimeRef.value,
+  ].filter(Boolean) as HTMLElement[]
+
+  if (observerTargets.length === 0)
+    return
+
+  if ('ResizeObserver' in window) {
+    controlsLayoutObserver = new ResizeObserver(() => {
+      schedulePlayerControlLayoutUpdate()
+    })
+    observerTargets.forEach(target => controlsLayoutObserver?.observe(target))
+    return
+  }
+
+  window.addEventListener('resize', schedulePlayerControlLayoutUpdate)
+}
+
+function unbindPlayerControlLayoutObserver() {
+  controlsLayoutObserver?.disconnect()
+  controlsLayoutObserver = null
+  window.removeEventListener('resize', schedulePlayerControlLayoutUpdate)
+
+  if (controlsLayoutAnimationFrameId)
+    window.cancelAnimationFrame(controlsLayoutAnimationFrameId)
+  controlsLayoutAnimationFrameId = 0
+}
 
 function handleSpeedSelect(value: string | number) {
   const nextSpeed = Number(value)
@@ -591,9 +677,15 @@ onMounted(() => {
   mapInstance.value = map
   initTrajectoryLayers(map)
   initMovingMarkerLayer(map)
+
+  nextTick(() => {
+    bindPlayerControlLayoutObserver()
+    schedulePlayerControlLayoutUpdate()
+  })
 })
 
 onBeforeUnmount(() => {
+  unbindPlayerControlLayoutObserver()
   if (followAnimationFrameId)
     window.cancelAnimationFrame(followAnimationFrameId)
   followAnimationFrameId = 0
@@ -648,9 +740,16 @@ onBeforeUnmount(() => {
             />
           </div>
 
-          <div class="moving-player-controls">
+          <div
+            ref="playerControlsRef"
+            class="moving-player-controls"
+            :class="`moving-player-controls--${playerControlLayout}`"
+          >
             <div class="moving-player-controls-main">
-              <div class="moving-player-buttons">
+              <div
+                ref="playerButtonsRef"
+                class="moving-player-buttons"
+              >
                 <n-tooltip trigger="hover">
                   <template #trigger>
                     <n-button
@@ -699,7 +798,10 @@ onBeforeUnmount(() => {
                 </n-dropdown>
               </div>
             </div>
-            <div class="moving-player-switches">
+            <div
+              ref="playerSwitchesRef"
+              class="moving-player-switches"
+            >
               <div class="moving-loop-toggle">
                 <n-switch
                   v-model:value="player.followViewEnabled"
@@ -717,7 +819,10 @@ onBeforeUnmount(() => {
                 <span>循环播放</span>
               </div>
             </div>
-            <div class="moving-player-time">
+            <div
+              ref="playerTimeRef"
+              class="moving-player-time"
+            >
               <span>{{ currentTimeText }}</span>
               <span class="moving-player-time-separator">/</span>
               <span>{{ endTimeText }}</span>
@@ -785,7 +890,6 @@ onBeforeUnmount(() => {
   border: 1px solid rgb(255 255 255 / 24%);
   border-radius: 12px;
   backdrop-filter: blur(8px);
-  container-type: inline-size;
 }
 
 .moving-player-mask {
@@ -811,7 +915,6 @@ onBeforeUnmount(() => {
 }
 
 .moving-player-time {
-  grid-area: time;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -824,7 +927,7 @@ onBeforeUnmount(() => {
   background: rgb(255 255 255 / 8%);
   border: 1px solid rgb(255 255 255 / 20%);
   border-radius: 999px;
-  justify-self: end;
+  flex: 0 0 auto;
 }
 
 .moving-player-time-separator {
@@ -832,15 +935,14 @@ onBeforeUnmount(() => {
 }
 
 .moving-player-controls {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  grid-template-areas: 'controls switches time';
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
 }
 
 .moving-player-controls-main {
-  grid-area: controls;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -849,7 +951,6 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  flex: 1;
   min-width: 0;
 }
 
@@ -874,12 +975,13 @@ onBeforeUnmount(() => {
 }
 
 .moving-player-switches {
-  grid-area: switches;
   display: flex;
   align-items: center;
   gap: 14px;
   color: rgb(238 243 252 / 82%);
-  min-width: 0;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  min-width: max-content;
 }
 
 .moving-loop-toggle {
@@ -898,39 +1000,19 @@ onBeforeUnmount(() => {
   background: #409EFF;
 }
 
-@container (max-width: 980px) {
-  .moving-player-controls {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      'controls controls'
-      'switches time';
-  }
-
-  .moving-player-switches {
-    justify-self: start;
-  }
+.moving-player-controls--double .moving-player-time {
+  flex-basis: 100%;
+  justify-content: flex-start;
 }
 
-@container (max-width: 760px) {
-  .moving-player-controls {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      'controls'
-      'switches'
-      'time';
-  }
+.moving-player-controls--triple .moving-player-controls-main,
+.moving-player-controls--triple .moving-player-switches,
+.moving-player-controls--triple .moving-player-time {
+  flex-basis: 100%;
+}
 
-  .moving-player-switches {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-  }
-
-  .moving-loop-toggle {
-    width: 100%;
-    justify-content: space-between;
-    padding: 0 2px;
-  }
+.moving-player-controls--triple .moving-player-time {
+  justify-content: flex-start;
 }
 
 @media (max-width: 860px) {

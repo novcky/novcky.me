@@ -4,7 +4,7 @@
       Hi, I&apos;m
     </p>
     <h1 class="profile-name">
-      Novcky
+      Novick Yuan
     </h1>
     <p class="profile-intro">
       这里是地图交互与前端体验的实验场，当前页面聚焦轨迹回放与要素编辑两个 Demo。
@@ -26,12 +26,12 @@
       >
         Blog
       </a>
-      <a
+      <!-- <a
         class="profile-link"
         href="mailto:hi@novcky.me"
       >
         Email
-      </a>
+      </a> -->
     </div>
   </section>
 </template>
