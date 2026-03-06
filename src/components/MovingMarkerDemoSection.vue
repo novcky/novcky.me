@@ -701,7 +701,13 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="card section">
-    <h2>轨迹回放（MovingMarker）</h2>
+    <h2>轨迹回放引擎能力（MovingMarker）</h2>
+    <p class="moving-player-intro">
+      该案例基于开源
+      <code>MovingMarker</code>
+      做源码级改造，补齐播放器级时间轴与事件控制，支持播放、暂停、停止、循环、进度跳转与倍速切换不中断。
+      当前实现重点是连续、稳定的轨迹回放体验。
+    </p>
 
     <div class="moving-demo-layout">
       <div class="moving-map-stage">
@@ -835,6 +841,22 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.moving-player-intro {
+  margin: -2px 2px 10px;
+  color: rgb(255 255 255 / 78%);
+  font-size: 12px;
+  line-height: 1.75;
+}
+
+.moving-player-intro code {
+  padding: 1px 5px;
+  color: rgb(106 166 255 / 94%);
+  font-size: 11px;
+  background: rgb(106 166 255 / 12%);
+  border: 1px solid rgb(106 166 255 / 30%);
+  border-radius: 6px;
+}
+
 .moving-demo-layout {
   padding: 12px;
 }
@@ -1028,6 +1050,11 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 860px) {
+  .moving-player-intro {
+    margin-bottom: 8px;
+    font-size: 11px;
+  }
+
   .moving-demo-map {
     height: 560px;
   }

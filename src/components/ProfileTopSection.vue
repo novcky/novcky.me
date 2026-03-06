@@ -6,9 +6,7 @@
     <h1 class="profile-name">
       Novick Yuan
     </h1>
-    <p class="profile-intro">
-      这里是地图交互与前端体验的实验场，当前页面聚焦轨迹回放与要素编辑两个 Demo。
-    </p>
+    <p class="profile-intro">专注 WebGIS 前端与地图交互工程化，这里聚焦两个核心案例：轨迹回放引擎源码改造、要素编辑工具能力沉淀。目标是验证复杂交互在真实业务场景中的可复用性与稳定性。</p>
     <div class="profile-links">
       <a
         class="profile-link"
@@ -69,7 +67,6 @@
 
 .profile-intro {
   margin: 0;
-  max-width: 680px;
   font-size: 13px;
   line-height: 1.7;
   color: rgb(255 255 255 / 78%);

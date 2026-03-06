@@ -180,7 +180,13 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="card section">
-    <h2>地图要素编辑（Leaflet）</h2>
+    <h2>地图要素编辑能力（Leaflet）</h2>
+    <p class="feature-tools-intro">
+      该工具并非简单绘制示例，而是对
+      <code>Leaflet-Geoman</code>
+      部分付费能力（重点为图斑切割）做过源码级复刻与工程化封装，目标是提供稳定、连续的地图编辑体验。
+      当前 Demo 覆盖新增、调整、切割、合并、删除等核心要素编辑链路。
+    </p>
     <div class="map-wrap">
       <div
         ref="mapElement"
@@ -240,3 +246,28 @@ onBeforeUnmount(() => {
     </div>
   </section>
 </template>
+
+<style scoped>
+.feature-tools-intro {
+  margin: -2px 2px 10px;
+  color: rgb(255 255 255 / 78%);
+  font-size: 12px;
+  line-height: 1.75;
+}
+
+.feature-tools-intro code {
+  padding: 1px 5px;
+  color: rgb(106 166 255 / 94%);
+  font-size: 11px;
+  background: rgb(106 166 255 / 12%);
+  border: 1px solid rgb(106 166 255 / 30%);
+  border-radius: 6px;
+}
+
+@media (max-width: 860px) {
+  .feature-tools-intro {
+    margin-bottom: 8px;
+    font-size: 11px;
+  }
+}
+</style>
