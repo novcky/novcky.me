@@ -133,8 +133,10 @@ function handleClickComponent(componentName: string) {
     return
   }
 
-  if (activeComponent.value !== '')
+  if (activeComponent.value !== '') {
+    notify('info', '请先完成当前操作或点击取消')
     return
+  }
 
   const restrictedComponents = ['BtnEdit', 'BtnSplit', 'BtnDel']
   if (restrictedComponents.includes(componentName) && polygonGroup.getLayers().length < 1) {
@@ -288,38 +290,44 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .feature-tools-container {
-  margin-bottom: 18px;
+  margin-bottom: 12px;
   display: none;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: stretch;
   overflow: visible;
-  background: linear-gradient(180deg, rgb(9 17 36 / 82%) 0%, rgb(9 17 36 / 92%) 100%);
+  background: linear-gradient(180deg, rgb(9 17 36 / 80%) 0%, rgb(9 17 36 / 92%) 100%);
   border: 1px solid rgb(255 255 255 / 24%);
-  border-radius: 12px;
+  border-radius: 14px;
   backdrop-filter: blur(8px);
-  box-shadow: rgb(0 0 0 / 34%) 0 8px 22px;
+  box-shadow: rgb(0 0 0 / 34%) 0 8px 20px;
 }
 
 .feature-tools-divider {
-  width: 100%;
-  height: 1px;
+  width: 1px;
+  min-height: 44px;
   background: rgb(255 255 255 / 16%);
 }
 
 :deep(.feature-tools-btn) {
   position: relative;
-  padding: 10px 12px 8px;
-  min-width: 78px;
+  padding: 8px 9px 7px;
+  min-width: 54px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 2px;
-  font-size: 13px;
+  gap: 3px;
+  font-size: 11px;
+  line-height: 1;
   color: rgb(238 243 252 / 82%);
   background: transparent;
   transition: all 0.2s;
   cursor: pointer;
   user-select: none;
+}
+
+:deep(.feature-tools-btn > span:nth-child(2)) {
+  line-height: 1.1;
 }
 
 :deep(.feature-tools-btn:hover):not(.feature-tools-btn-disabled),
@@ -334,18 +342,18 @@ onBeforeUnmount(() => {
 }
 
 :deep(.tool-icon) {
-  width: 22px;
+  width: 20px;
   display: inline-flex;
   justify-content: center;
-  font-size: 17px;
+  font-size: 15px;
   line-height: 1;
 }
 
 :deep(.operation-panel) {
   position: absolute;
-  top: 50%;
-  right: calc(100% + 8px);
-  transform: translateY(-50%);
+  top: calc(100% + 8px);
+  right: 0;
+  transform: none;
   padding: 8px 10px;
   display: flex;
   align-items: center;
@@ -363,24 +371,25 @@ onBeforeUnmount(() => {
 
 @media (max-width: 860px) {
   .feature-tools-container {
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
 
   :deep(.feature-tools-btn) {
-    min-width: 68px;
-    padding: 8px 10px 7px;
+    min-width: 40px;
+    padding: 7px 8px;
     font-size: 12px;
   }
 
+  :deep(.feature-tools-btn > span:nth-child(2)) {
+    display: none;
+  }
+
   :deep(.tool-icon) {
-    font-size: 15px;
+    font-size: 14px;
   }
 
   :deep(.operation-panel) {
-    top: calc(100% + 8px);
-    right: 0;
-    transform: none;
-    max-width: min(86vw, 280px);
+    max-width: min(90vw, 260px);
     flex-wrap: wrap;
     justify-content: flex-end;
   }

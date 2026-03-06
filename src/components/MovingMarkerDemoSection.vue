@@ -17,9 +17,13 @@ const mapInstance = shallowRef<L.Map | null>(null)
 const tileLayerController = shallowRef<BaseTileLayerController | null>(null)
 const movingMarker = shallowRef<MovingMarker | null>(null)
 const routePolyline = shallowRef<L.Polyline | null>(null)
-const routePassedPolyline = shallowRef<L.Polyline | null>(null)
+const routePassedStaticPolyline = shallowRef<L.Polyline | null>(null)
+const routePassedActivePolyline = shallowRef<L.Polyline | null>(null)
 const endpointMarkers = shallowRef<[L.CircleMarker | null, L.CircleMarker | null]>([null, null])
 const isSeeking = ref(false)
+const lastPassedLineIndex = ref(-1)
+let followAnimationFrameId = 0
+let pendingFollowLatLng: L.LatLng | null = null
 
 const trajectoryLatlngs = movingTrajectoryData.map(item => Leaflet.latLng(item.lat, item.lng))
 
@@ -31,6 +35,7 @@ const player = reactive({
   segmentDuration: 1500,
   selectSpeed: 1,
   loopEnabled: true,
+  followViewEnabled: true,
   speedCheckpoint: null as number | null,
   speedOffset: 0,
   speedOptions: [
@@ -148,6 +153,42 @@ watch(
   },
 )
 
+watch(
+  () => player.followViewEnabled,
+  (enabled) => {
+    if (!enabled) {
+      pendingFollowLatLng = null
+      if (followAnimationFrameId)
+        window.cancelAnimationFrame(followAnimationFrameId)
+      followAnimationFrameId = 0
+      return
+    }
+
+    const markerLatLng = movingMarker.value?.getLatLng()
+    if (markerLatLng)
+      scheduleFollowView(markerLatLng)
+  },
+)
+
+function scheduleFollowView(targetLatLng: L.LatLng) {
+  if (!player.followViewEnabled)
+    return
+
+  pendingFollowLatLng = targetLatLng
+  if (followAnimationFrameId)
+    return
+
+  followAnimationFrameId = window.requestAnimationFrame(() => {
+    const nextLatLng = pendingFollowLatLng
+    pendingFollowLatLng = null
+    followAnimationFrameId = 0
+    if (!nextLatLng)
+      return
+
+    mapInstance.value?.panTo(nextLatLng, { animate: false })
+  })
+}
+
 function createDurationsBySpeed(speed: number) {
   return Array.from(
     { length: Math.max(trajectoryLatlngs.length - 1, 0) },
@@ -188,28 +229,65 @@ function getLatlngByProgress(progress: number) {
   )
 }
 
-function buildPassedPathByProgress(progress: number) {
-  if (trajectoryLatlngs.length === 0)
-    return [] as L.LatLng[]
-
-  if (trajectoryLatlngs.length === 1)
-    return [trajectoryLatlngs[0]]
-
-  const pointMaxIndex = trajectoryLatlngs.length - 1
+function resolveProgressMeta(progress: number) {
+  const pointMaxIndex = Math.max(trajectoryLatlngs.length - 1, 0)
   const clampedProgress = Math.min(Math.max(progress, player.sliderMin), pointMaxIndex)
-  const lineIndex = Math.min(Math.floor(clampedProgress), pointMaxIndex - 1)
-  const passedPath = trajectoryLatlngs.slice(0, lineIndex + 1)
-
+  const lineIndex = pointMaxIndex > 0
+    ? Math.min(Math.floor(clampedProgress), pointMaxIndex - 1)
+    : 0
   const segmentOffset = Math.min(Math.max(clampedProgress - lineIndex, 0), 1)
-  const interpolatedPoint = getLatlngByProgress(clampedProgress)
-  if (interpolatedPoint && segmentOffset > 0)
-    passedPath.push(interpolatedPoint)
-
-  return passedPath
+  return {
+    clampedProgress,
+    lineIndex,
+    pointMaxIndex,
+    segmentOffset,
+  }
 }
 
-function updatePassedPathByProgress(progress: number) {
-  routePassedPolyline.value?.setLatLngs(buildPassedPathByProgress(progress))
+function updatePassedPathByProgress(progress: number, forceStaticRefresh = false) {
+  if (trajectoryLatlngs.length === 0)
+    return
+
+  const {
+    clampedProgress,
+    lineIndex,
+    pointMaxIndex,
+    segmentOffset,
+  } = resolveProgressMeta(progress)
+
+  if (clampedProgress <= player.sliderMin) {
+    routePassedStaticPolyline.value?.setLatLngs([trajectoryLatlngs[0]])
+    routePassedActivePolyline.value?.setLatLngs([])
+    lastPassedLineIndex.value = 0
+    return
+  }
+
+  if (clampedProgress >= pointMaxIndex) {
+    routePassedStaticPolyline.value?.setLatLngs(trajectoryLatlngs)
+    routePassedActivePolyline.value?.setLatLngs([])
+    lastPassedLineIndex.value = Math.max(pointMaxIndex - 1, 0)
+    return
+  }
+
+  if (forceStaticRefresh || lastPassedLineIndex.value !== lineIndex) {
+    routePassedStaticPolyline.value?.setLatLngs(trajectoryLatlngs.slice(0, lineIndex + 1))
+    lastPassedLineIndex.value = lineIndex
+  }
+
+  if (segmentOffset <= 0) {
+    routePassedActivePolyline.value?.setLatLngs([])
+    return
+  }
+
+  const startPoint = trajectoryLatlngs[lineIndex]
+  const interpolatedPoint = getLatlngByProgress(clampedProgress)
+  if (!startPoint || !interpolatedPoint) {
+    routePassedActivePolyline.value?.setLatLngs([])
+    return
+  }
+
+  // 已走轨迹拆为“稳定实线 + 当前段实时补线”，避免整段重绘导致视觉抖动。
+  routePassedActivePolyline.value?.setLatLngs([startPoint, interpolatedPoint])
 }
 
 function updateMarkerTooltip() {
@@ -240,8 +318,10 @@ function handleSliderUpdate(value: number | number[]) {
     marker.pause()
 
   const nextLatlng = getLatlngByProgress(targetProgress)
-  if (nextLatlng)
+  if (nextLatlng) {
     marker.setLatLng(nextLatlng)
+    scheduleFollowView(nextLatlng)
+  }
 
   updatePassedPathByProgress(targetProgress)
   updateMarkerTooltip()
@@ -255,7 +335,8 @@ function handleSliderSeekCommit() {
   }
 
   marker.playFromProgress(player.sliderValue)
-  updatePassedPathByProgress(player.sliderValue)
+  updatePassedPathByProgress(player.sliderValue, true)
+  scheduleFollowView(marker.getLatLng())
   isSeeking.value = false
   if (player.status !== 'play') {
     // 拖拽定位会临时触发内部播放状态，这里需要立刻回退，避免暂停态被意外改成播放态。
@@ -295,6 +376,7 @@ function playPlayer() {
   player.status = 'play'
   player.speedCheckpoint = null
   player.speedOffset = 0
+  scheduleFollowView(marker.getLatLng())
 }
 
 function pausePlayer() {
@@ -316,7 +398,8 @@ function stopPlayer() {
   isSeeking.value = false
   setSliderValue(0)
   marker.setLatLng(trajectoryLatlngs[0])
-  updatePassedPathByProgress(0)
+  updatePassedPathByProgress(0, true)
+  scheduleFollowView(marker.getLatLng())
   updateMarkerTooltip()
 }
 
@@ -331,13 +414,22 @@ function initTrajectoryLayers(map: L.Map) {
     dashArray: '8 8',
   }).addTo(map)
 
-  routePassedPolyline.value = Leaflet.polyline(buildPassedPathByProgress(0), {
+  routePassedStaticPolyline.value = Leaflet.polyline([trajectoryLatlngs[0]], {
     color: '#409EFF',
     weight: 4,
-    opacity: 0.95,
+    opacity: 0.9,
     lineCap: 'round',
     lineJoin: 'round',
   }).addTo(map)
+
+  routePassedActivePolyline.value = Leaflet.polyline([], {
+    color: '#66B1FF',
+    weight: 5,
+    opacity: 0.98,
+    lineCap: 'round',
+    lineJoin: 'round',
+  }).addTo(map)
+  lastPassedLineIndex.value = 0
 
   endpointMarkers.value[0] = Leaflet.circleMarker(trajectoryLatlngs[0], {
     radius: 6,
@@ -368,10 +460,17 @@ function destroyTrajectoryLayers() {
     routePolyline.value = null
   }
 
-  if (routePassedPolyline.value) {
-    map.removeLayer(routePassedPolyline.value)
-    routePassedPolyline.value = null
+  if (routePassedStaticPolyline.value) {
+    map.removeLayer(routePassedStaticPolyline.value)
+    routePassedStaticPolyline.value = null
   }
+
+  if (routePassedActivePolyline.value) {
+    map.removeLayer(routePassedActivePolyline.value)
+    routePassedActivePolyline.value = null
+  }
+
+  lastPassedLineIndex.value = -1
 
   endpointMarkers.value.forEach((marker, index) => {
     if (!marker)
@@ -421,6 +520,7 @@ function initMovingMarkerLayer(map: L.Map) {
 
     setSliderValue(event.progress)
     updatePassedPathByProgress(event.progress)
+    scheduleFollowView(marker.getLatLng())
   })
 
   marker.on('updateLine', (event: L.LeafletEvent & { lineIndex?: number }) => {
@@ -432,18 +532,21 @@ function initMovingMarkerLayer(map: L.Map) {
     player.status = 'stop'
     setSliderValue(player.sliderMax)
     updatePassedPathByProgress(player.sliderMax)
+    scheduleFollowView(marker.getLatLng())
     updateMarkerTooltip()
   })
 
   marker.on('loop', () => {
     player.status = 'play'
     setSliderValue(0)
-    updatePassedPathByProgress(0)
+    updatePassedPathByProgress(0, true)
+    scheduleFollowView(marker.getLatLng())
     updateMarkerTooltip()
   })
 
   movingMarker.value = marker
   updateMarkerTooltip()
+  scheduleFollowView(marker.getLatLng())
 }
 
 function destroyMovingMarkerLayer() {
@@ -491,6 +594,10 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  if (followAnimationFrameId)
+    window.cancelAnimationFrame(followAnimationFrameId)
+  followAnimationFrameId = 0
+  pendingFollowLatLng = null
   destroyMovingMarkerLayer()
   destroyTrajectoryLayers()
   tileLayerController.value?.dispose()
@@ -543,26 +650,36 @@ onBeforeUnmount(() => {
 
           <div class="moving-player-controls">
             <div class="moving-player-buttons">
-              <n-button
-                :disabled="!hasTrajectory"
-                class="moving-control-btn"
-                round
-                size="small"
-                type="primary"
-                @click="togglePlay"
-              >
+              <n-tooltip trigger="hover">
+                <template #trigger>
+                  <n-button
+                    :disabled="!hasTrajectory"
+                    class="moving-control-btn moving-icon-btn"
+                    round
+                    size="small"
+                    type="primary"
+                    @click="togglePlay"
+                  >
+                    <span class="moving-control-icon">{{ player.status === 'play' ? '⏸' : '▶' }}</span>
+                  </n-button>
+                </template>
                 {{ player.status === 'play' ? '暂停' : '播放' }}
-              </n-button>
-              <n-button
-                :disabled="!hasTrajectory || player.status === 'stop'"
-                class="moving-control-btn"
-                round
-                size="small"
-                type="error"
-                @click="stopPlayer"
-              >
+              </n-tooltip>
+              <n-tooltip trigger="hover">
+                <template #trigger>
+                  <n-button
+                    :disabled="!hasTrajectory || player.status === 'stop'"
+                    class="moving-control-btn moving-icon-btn"
+                    round
+                    size="small"
+                    type="error"
+                    @click="stopPlayer"
+                  >
+                    <span class="moving-control-icon">⏹</span>
+                  </n-button>
+                </template>
                 停止
-              </n-button>
+              </n-tooltip>
               <n-dropdown
                 :disabled="!hasTrajectory"
                 :options="speedDropdownOptions"
@@ -571,7 +688,7 @@ onBeforeUnmount(() => {
                 @select="handleSpeedSelect"
               >
                 <n-button
-                  class="moving-control-btn"
+                  class="moving-control-btn moving-speed-btn"
                   round
                   size="small"
                   type="info"
@@ -581,11 +698,19 @@ onBeforeUnmount(() => {
               </n-dropdown>
               <div class="moving-loop-toggle">
                 <n-switch
+                  v-model:value="player.followViewEnabled"
+                  :disabled="!hasTrajectory"
+                  size="small"
+                />
+                <span>视角跟随</span>
+              </div>
+              <div class="moving-loop-toggle">
+                <n-switch
                   v-model:value="player.loopEnabled"
                   :disabled="!hasTrajectory"
                   size="small"
                 />
-                <span>循环</span>
+                <span>循环播放</span>
               </div>
             </div>
             <div class="moving-player-time">
@@ -720,6 +845,18 @@ onBeforeUnmount(() => {
   min-width: 70px;
 }
 
+.moving-icon-btn {
+  min-width: 34px;
+  width: 34px;
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.moving-control-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
 .moving-speed-btn {
   min-width: 96px;
 }
@@ -771,6 +908,11 @@ onBeforeUnmount(() => {
 
   .moving-speed-btn {
     min-width: 88px;
+  }
+
+  .moving-icon-btn {
+    min-width: 32px;
+    width: 32px;
   }
 }
 

@@ -70,6 +70,7 @@ h2 {
 }
 
 .map-wrap {
+  position: relative;
   padding: 8px;
 }
 
@@ -86,12 +87,18 @@ h2 {
 }
 
 .tool-notices {
-  margin: 10px 0 0;
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 430;
+  margin: 0;
   padding: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  max-width: min(64vw, 520px);
   list-style: none;
+  pointer-events: none;
 }
 
 .tool-notice {
@@ -102,6 +109,8 @@ h2 {
   font-size: 12px;
   color: var(--text);
   line-height: 1.4;
+  backdrop-filter: blur(6px);
+  pointer-events: auto;
 }
 
 .tool-notice-info {
@@ -187,6 +196,12 @@ h2 {
 
   .map-wrap {
     padding: 6px;
+  }
+
+  .tool-notices {
+    top: 10px;
+    left: 10px;
+    max-width: min(86vw, 320px);
   }
 
   .leaflet-map {

@@ -45,7 +45,7 @@ function notify(type: NoticeType, message: string) {
 
   const timer = window.setTimeout(() => {
     removeNotice(id)
-  }, 2600)
+  }, 3400)
 
   noticeTimers.set(id, timer)
 }
@@ -206,9 +206,6 @@ onBeforeUnmount(() => {
           {{ item.message }}
         </li>
       </ul>
-      <p class="foot">
-        <span class="note">提示</span>：可先选中图斑，再体验编辑、切割、合并、删除；新增可直接绘制后提交。
-      </p>
     </div>
 
     <div
