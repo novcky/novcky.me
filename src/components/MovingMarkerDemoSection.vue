@@ -700,11 +700,21 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="card section">
+  <section
+    id="case-moving-marker"
+    class="card section"
+  >
     <h2>轨迹回放引擎能力（MovingMarker）</h2>
     <p class="moving-player-intro">
-      该案例基于开源
-      <code>MovingMarker</code>
+      该案例基于开源库
+      <a
+        class="site-inline-link"
+        href="https://github.com/ewoken/Leaflet.MovingMarker"
+        target="_blank"
+        rel="noreferrer"
+      >
+        Leaflet.MovingMarker
+      </a>
       做源码级改造，补齐播放器级时间轴与事件控制，支持播放、暂停、停止、循环、进度跳转与倍速切换不中断。
       当前实现重点是连续、稳定的轨迹回放体验。
     </p>
@@ -851,16 +861,6 @@ onBeforeUnmount(() => {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.75;
-}
-
-.moving-player-intro code {
-  padding: 0 2px;
-  color: var(--accent);
-  font-size: 11px;
-  background: none;
-  border: 0;
-  border-bottom: 1px dotted rgb(46 91 255 / 34%);
-  border-radius: 0;
 }
 
 .moving-case-points {
