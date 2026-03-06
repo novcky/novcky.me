@@ -29,6 +29,14 @@ import ProfileTopSection from '@/components/ProfileTopSection.vue'
           <p class="site-case-card-desc">
             开源能力源码级改造，补齐时间轴状态与外部事件体系，稳定支撑连续倍速与进度跳转。
           </p>
+          <div class="site-case-card-links">
+            <a
+              class="site-case-card-link"
+              href="#case-moving-marker"
+            >
+              查看案例
+            </a>
+          </div>
         </article>
         <article class="site-case-card">
           <p class="site-case-card-kicker">
@@ -40,11 +48,32 @@ import ProfileTopSection from '@/components/ProfileTopSection.vue'
           <p class="site-case-card-desc">
             复刻并封装 Geoman 核心付费编辑链路，面向业务场景沉淀新增、切割、合并、删除能力。
           </p>
+          <div class="site-case-card-links">
+            <a
+              class="site-case-card-link"
+              href="#case-feature-tools"
+            >
+              查看案例
+            </a>
+          </div>
         </article>
       </div>
     </section>
 
     <MovingMarkerDemoSection class="site-block" />
     <MapDemoSection class="site-block" />
+
+    <footer class="site-footer">
+      <p class="site-footer-license">
+        <a
+          href="https://github.com/novcky/novcky.me/blob/main/LICENSE"
+          target="_blank"
+          rel="noreferrer"
+        >
+          MIT License
+        </a>
+        <span>2026-PRESENT © Novick Yuan</span>
+      </p>
+    </footer>
   </main>
 </template>

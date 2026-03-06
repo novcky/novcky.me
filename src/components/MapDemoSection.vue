@@ -179,11 +179,27 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="card section">
+  <section
+    id="case-feature-tools"
+    class="card section"
+  >
     <h2>地图要素编辑能力（Leaflet）</h2>
     <p class="feature-tools-intro">
       该工具并非简单绘制示例，而是对
-      <code>Leaflet-Geoman</code>
+      <a
+        class="site-inline-link geoman-link"
+        href="https://geoman.io"
+        target="_blank"
+        rel="noreferrer"
+      >
+        <img
+          class="geoman-link-logo"
+          src="https://geoman.io/favicon.ico"
+          alt=""
+          aria-hidden="true"
+        >
+        <span>Geoman</span>
+      </a>
       部分付费能力（重点为图斑切割）做过源码级复刻与工程化封装，目标是提供稳定、连续的地图编辑体验。
       当前 Demo 覆盖新增、调整、切割、合并、删除等核心要素编辑链路。
     </p>
@@ -236,13 +252,13 @@ onBeforeUnmount(() => {
             class="confirm-btn confirm-btn-cancel"
             @click="resolveConfirm(false)"
           >
-            取 消
+            取消
           </n-button>
           <n-button
             class="confirm-btn confirm-btn-submit"
             @click="resolveConfirm(true)"
           >
-            确 定
+            确定
           </n-button>
         </div>
       </div>
@@ -258,16 +274,6 @@ onBeforeUnmount(() => {
   line-height: 1.75;
 }
 
-.feature-tools-intro code {
-  padding: 0 2px;
-  color: var(--accent);
-  font-size: 11px;
-  background: none;
-  border: 0;
-  border-bottom: 1px dotted rgb(46 91 255 / 34%);
-  border-radius: 0;
-}
-
 .feature-tools-points {
   margin: 0 2px 12px;
   padding-left: 18px;
@@ -278,6 +284,19 @@ onBeforeUnmount(() => {
 
 .feature-tools-points li + li {
   margin-top: 3px;
+}
+
+.geoman-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.geoman-link-logo {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
 }
 
 .confirm-btn-submit {

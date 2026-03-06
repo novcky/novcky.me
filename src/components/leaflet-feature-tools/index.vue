@@ -7,7 +7,7 @@ import type {
 } from './context'
 import * as L from 'leaflet'
 
-import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, provide, ref, watch } from 'vue'
 import BtnAdd from './btnAdd.vue'
 import BtnDel from './btnDel.vue'
 import BtnEdit from './btnEdit.vue'
@@ -54,11 +54,9 @@ const curFeatures = ref<DemoFeature[]>([])
 const isMultipleMode = ref(false)
 const enableMapClickEvents = ref(true)
 const isControlMounted = ref(false)
-const operationPanelPlacement = ref<'left' | 'right' | 'top' | 'bottom'>('left')
 const featureToolsContainerRef = ref<HTMLDivElement | null>(null)
 const polygonGroup = L.featureGroup()
 const featureToolsControl = L.control({ position: props.position })
-let placementAnimationFrameId = 0
 
 const map = computed(() => props.map)
 const pm = computed(() => (map.value as (L.Map & { pm?: GeomanInstance }) | null)?.pm ?? null)
@@ -96,52 +94,6 @@ function componentClass(componentName: string) {
   return activeComponent.value === componentName
     ? 'feature-tools-btn-active'
     : 'feature-tools-btn-disabled'
-}
-
-function scheduleOperationPanelPlacement() {
-  if (placementAnimationFrameId)
-    window.cancelAnimationFrame(placementAnimationFrameId)
-
-  placementAnimationFrameId = window.requestAnimationFrame(() => {
-    placementAnimationFrameId = 0
-    updateOperationPanelPlacement()
-  })
-}
-
-function updateOperationPanelPlacement() {
-  if (!activeComponent.value || !featureToolsContainerRef.value)
-    return
-
-  const activeButton = featureToolsContainerRef.value.querySelector('.feature-tools-btn-active') as HTMLElement | null
-  const operationPanel = activeButton?.querySelector('.operation-panel') as HTMLElement | null
-  const mapContainer = map.value?.getContainer()
-  if (!activeButton || !operationPanel || !mapContainer)
-    return
-
-  const safeGap = 8
-  const buttonRect = activeButton.getBoundingClientRect()
-  const panelRect = operationPanel.getBoundingClientRect()
-  const mapRect = mapContainer.getBoundingClientRect()
-  const panelWidth = Math.max(panelRect.width, 136)
-  const panelHeight = Math.max(panelRect.height, 42)
-
-  const leftSpace = buttonRect.left - mapRect.left - safeGap
-  const rightSpace = mapRect.right - buttonRect.right - safeGap
-  const topSpace = buttonRect.top - mapRect.top - safeGap
-  const bottomSpace = mapRect.bottom - buttonRect.bottom - safeGap
-
-  // 优先沿水平方向展开，只有在左右都放不下时才切换到上下，减少鼠标移动距离。
-  if (leftSpace >= panelWidth || rightSpace >= panelWidth) {
-    operationPanelPlacement.value = rightSpace > leftSpace ? 'right' : 'left'
-    return
-  }
-
-  if (topSpace >= panelHeight || bottomSpace >= panelHeight) {
-    operationPanelPlacement.value = bottomSpace > topSpace ? 'bottom' : 'top'
-    return
-  }
-
-  operationPanelPlacement.value = rightSpace >= leftSpace ? 'right' : 'left'
 }
 
 function drawFeature(feature: DemoFeature) {
@@ -193,7 +145,6 @@ function handleClickComponent(componentName: string) {
   }
 
   setActiveComponent(componentName)
-  scheduleOperationPanelPlacement()
 }
 
 function handleCloseComponent() {
@@ -285,26 +236,6 @@ watch(
   { immediate: true },
 )
 
-watch(
-  () => activeComponent.value,
-  async (componentName) => {
-    if (!componentName) {
-      operationPanelPlacement.value = 'left'
-      return
-    }
-
-    await nextTick()
-    scheduleOperationPanelPlacement()
-  },
-)
-
-function handleViewportResize() {
-  if (!activeComponent.value)
-    return
-
-  scheduleOperationPanelPlacement()
-}
-
 provide(FEATURE_TOOLS_INJECTION_KEY, {
   activeComponent,
   clearPolygonGroup,
@@ -326,16 +257,8 @@ provide(FEATURE_TOOLS_INJECTION_KEY, {
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', handleViewportResize)
-  if (placementAnimationFrameId)
-    window.cancelAnimationFrame(placementAnimationFrameId)
-  placementAnimationFrameId = 0
   unmountControl()
   emit('close')
-})
-
-onMounted(() => {
-  window.addEventListener('resize', handleViewportResize)
 })
 </script>
 
@@ -357,12 +280,7 @@ onMounted(() => {
       <component
         :is="item.component"
         class="feature-tools-btn"
-        :class="[
-          componentClass(item.key),
-          activeComponent === item.key
-            ? `operation-panel-placement-${operationPanelPlacement}`
-            : '',
-        ]"
+        :class="componentClass(item.key)"
         @click="handleClickComponent(item.key)"
         @close="handleCloseComponent"
       />
@@ -372,6 +290,7 @@ onMounted(() => {
 
 <style scoped>
 .feature-tools-container {
+  position: relative;
   margin-bottom: 12px;
   display: none;
   flex-direction: row;
@@ -391,7 +310,6 @@ onMounted(() => {
 }
 
 :deep(.feature-tools-btn) {
-  position: relative;
   padding: 8px 9px 7px;
   min-width: 54px;
   display: flex;
@@ -424,59 +342,52 @@ onMounted(() => {
 }
 
 :deep(.tool-icon) {
-  width: 20px;
+  width: 17px;
+  height: 17px;
   display: inline-flex;
   justify-content: center;
-  font-size: 15px;
+  align-items: center;
+  color: currentColor;
+}
+
+:deep(.tool-icon svg) {
+  width: 100%;
+  height: 100%;
+  display: block;
+  transition: transform 0.2s;
+}
+
+:deep(.feature-tools-btn:hover .tool-icon svg),
+:deep(.feature-tools-btn-active .tool-icon svg) {
+  transform: scale(1.04);
+}
+
+:deep(.tool-label) {
+  letter-spacing: 0.01em;
   line-height: 1;
 }
 
 :deep(.operation-panel) {
+  /* 操作条固定在工具栏上方，避免随按钮位置跳变导致鼠标路径不稳定。 */
   position: absolute;
-  padding: 8px 10px;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translateX(-50%);
+  padding: 8px 9px;
   display: flex;
+  justify-content: flex-end;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   background: rgb(255 255 255 / 96%);
   border: 1px solid rgb(23 26 31 / 14%);
-  border-radius: 10px;
+  border-radius: 11px;
   backdrop-filter: blur(6px);
   box-shadow: 0 8px 18px rgb(15 23 42 / 12%);
-  z-index: 2;
-}
-
-:deep(.operation-panel-placement-left .operation-panel) {
-  top: 50%;
-  right: calc(100% + 8px);
-  left: auto;
-  transform: translateY(-50%);
-}
-
-:deep(.operation-panel-placement-right .operation-panel) {
-  top: 50%;
-  left: calc(100% + 8px);
-  right: auto;
-  transform: translateY(-50%);
-}
-
-:deep(.operation-panel-placement-top .operation-panel) {
-  bottom: calc(100% + 8px);
-  left: 50%;
-  top: auto;
-  right: auto;
-  transform: translateX(-50%);
-}
-
-:deep(.operation-panel-placement-bottom .operation-panel) {
-  top: calc(100% + 8px);
-  left: 50%;
-  bottom: auto;
-  right: auto;
-  transform: translateX(-50%);
+  z-index: 5;
 }
 
 :deep(.operation-btn) {
-  min-width: 76px;
+  min-width: 68px;
 }
 
 :deep(.operation-btn-submit) {
@@ -519,29 +430,18 @@ onMounted(() => {
   }
 
   :deep(.tool-icon) {
-    font-size: 14px;
+    width: 16px;
+    height: 16px;
   }
 
   :deep(.operation-panel) {
+    left: auto;
+    right: 0;
+    bottom: calc(100% + 8px);
+    transform: none;
     max-width: min(80vw, 240px);
     flex-wrap: wrap;
     justify-content: flex-end;
-  }
-
-  :deep(.operation-panel-placement-left .operation-panel) {
-    right: calc(100% + 6px);
-  }
-
-  :deep(.operation-panel-placement-right .operation-panel) {
-    left: calc(100% + 6px);
-  }
-
-  :deep(.operation-panel-placement-top .operation-panel) {
-    bottom: calc(100% + 6px);
-  }
-
-  :deep(.operation-panel-placement-bottom .operation-panel) {
-    top: calc(100% + 6px);
   }
 
   :deep(.operation-btn) {
