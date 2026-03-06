@@ -708,6 +708,11 @@ onBeforeUnmount(() => {
       做源码级改造，补齐播放器级时间轴与事件控制，支持播放、暂停、停止、循环、进度跳转与倍速切换不中断。
       当前实现重点是连续、稳定的轨迹回放体验。
     </p>
+    <ul class="moving-case-points">
+      <li>时间轴状态改造：切换倍速保持播放连续，避免进度回退与重启。</li>
+      <li>播放器级交互闭环：播放 / 暂停 / 停止 / 循环 / 拖拽定位。</li>
+      <li>事件体系可外控：UI 与轨迹动画解耦，便于业务侧组合扩展。</li>
+    </ul>
 
     <div class="moving-demo-layout">
       <div class="moving-map-stage">
@@ -843,22 +848,35 @@ onBeforeUnmount(() => {
 <style scoped>
 .moving-player-intro {
   margin: -2px 2px 10px;
-  color: rgb(255 255 255 / 78%);
-  font-size: 12px;
+  color: var(--muted);
+  font-size: 13px;
   line-height: 1.75;
 }
 
 .moving-player-intro code {
-  padding: 1px 5px;
-  color: rgb(106 166 255 / 94%);
+  padding: 0 2px;
+  color: var(--accent);
   font-size: 11px;
-  background: rgb(106 166 255 / 12%);
-  border: 1px solid rgb(106 166 255 / 30%);
-  border-radius: 6px;
+  background: none;
+  border: 0;
+  border-bottom: 1px dotted rgb(46 91 255 / 34%);
+  border-radius: 0;
+}
+
+.moving-case-points {
+  margin: 0 2px 12px;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.68;
+}
+
+.moving-case-points li + li {
+  margin-top: 3px;
 }
 
 .moving-demo-layout {
-  padding: 12px;
+  padding: 10px 8px 8px;
 }
 
 .moving-map-stage {
@@ -877,14 +895,15 @@ onBeforeUnmount(() => {
   top: 14px;
   left: 14px;
   z-index: 400;
-  padding: 8px 10px;
+  padding: 9px 11px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  background: rgb(11 16 32 / 62%);
-  border: 1px solid rgb(255 255 255 / 24%);
+  gap: 3px;
+  background: rgb(255 255 255 / 84%);
+  border: 1px solid rgb(23 26 31 / 14%);
   border-radius: 10px;
-  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 18px rgb(14 19 28 / 12%);
+  backdrop-filter: blur(6px);
 }
 
 .moving-player-name {
@@ -894,7 +913,7 @@ onBeforeUnmount(() => {
 
 .moving-player-area,
 .moving-player-line {
-  color: rgb(238 243 252 / 82%);
+  color: var(--muted);
   font-size: 12px;
 }
 
@@ -908,10 +927,11 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: linear-gradient(180deg, rgb(11 16 32 / 62%) 0%, rgb(11 16 32 / 86%) 100%);
-  border: 1px solid rgb(255 255 255 / 24%);
+  background: rgb(255 255 255 / 86%);
+  border: 1px solid rgb(23 26 31 / 13%);
   border-radius: 12px;
-  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 24px rgb(14 19 28 / 12%);
+  backdrop-filter: blur(6px);
 }
 
 .moving-player-mask {
@@ -921,8 +941,8 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  color: rgb(238 243 252 / 88%);
-  background: rgb(11 16 32 / 70%);
+  color: var(--muted);
+  background: rgb(255 255 255 / 90%);
   border-radius: 12px;
 }
 
@@ -936,25 +956,49 @@ onBeforeUnmount(() => {
   width: 100%;
 }
 
+:deep(.moving-slider .n-slider-rail) {
+  background: rgb(23 26 31 / 14%);
+}
+
+:deep(.moving-slider .n-slider-rail__fill) {
+  background: var(--accent) !important;
+}
+
+:deep(.moving-slider .n-slider-handle-indicator) {
+  background: #fff !important;
+  border: 2px solid var(--accent) !important;
+  box-shadow: 0 0 0 4px rgb(46 91 255 / 16%) !important;
+}
+
+:deep(.moving-slider .n-slider-handle:hover .n-slider-handle-indicator),
+:deep(.moving-slider .n-slider-handle.n-slider-handle--active .n-slider-handle-indicator) {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 5px rgb(46 91 255 / 20%) !important;
+}
+
+:deep(.moving-slider .n-slider-dot--active) {
+  border-color: var(--accent) !important;
+}
+
 .moving-player-time {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   height: 30px;
   padding: 0 10px;
-  color: rgb(238 243 252 / 82%);
+  color: var(--muted);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  background: rgb(255 255 255 / 8%);
-  border: 1px solid rgb(255 255 255 / 20%);
+  background: rgb(255 255 255 / 78%);
+  border: 1px solid rgb(23 26 31 / 14%);
   border-radius: 999px;
   flex: 0 0 auto;
   margin-left: auto;
 }
 
 .moving-player-time-separator {
-  color: rgb(238 243 252 / 55%);
+  color: var(--muted-2);
 }
 
 .moving-player-controls {
@@ -1010,7 +1054,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 14px;
-  color: rgb(238 243 252 / 82%);
+  color: var(--muted);
   flex: 0 0 auto;
   flex-wrap: nowrap;
   min-width: max-content;
@@ -1022,14 +1066,6 @@ onBeforeUnmount(() => {
   gap: 6px;
   font-size: 12px;
   user-select: none;
-}
-
-:deep(.moving-slider .n-slider-rail) {
-  background: rgb(255 255 255 / 20%);
-}
-
-:deep(.moving-slider .n-slider-rail__fill) {
-  background: #409EFF;
 }
 
 .moving-player-controls--double .moving-player-time {
@@ -1050,9 +1086,15 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 860px) {
+  .moving-case-points {
+    margin-bottom: 10px;
+    font-size: 12px;
+    line-height: 1.62;
+  }
+
   .moving-player-intro {
     margin-bottom: 8px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .moving-demo-map {

@@ -187,6 +187,11 @@ onBeforeUnmount(() => {
       部分付费能力（重点为图斑切割）做过源码级复刻与工程化封装，目标是提供稳定、连续的地图编辑体验。
       当前 Demo 覆盖新增、调整、切割、合并、删除等核心要素编辑链路。
     </p>
+    <ul class="feature-tools-points">
+      <li>核心编辑链路：新增 / 调整 / 切割 / 合并 / 删除一体化操作。</li>
+      <li>付费能力复刻：围绕图斑切割场景补齐可用的交互与算法流程。</li>
+      <li>仓储契约解耦：通过 repository 约定隔离地图渲染层与业务数据层。</li>
+    </ul>
     <div class="map-wrap">
       <div
         ref="mapElement"
@@ -228,15 +233,13 @@ onBeforeUnmount(() => {
         </p>
         <div class="confirm-actions">
           <n-button
-            class="confirm-btn"
-            type="warning"
+            class="confirm-btn confirm-btn-cancel"
             @click="resolveConfirm(false)"
           >
             取 消
           </n-button>
           <n-button
-            class="confirm-btn"
-            type="primary"
+            class="confirm-btn confirm-btn-submit"
             @click="resolveConfirm(true)"
           >
             确 定
@@ -250,24 +253,67 @@ onBeforeUnmount(() => {
 <style scoped>
 .feature-tools-intro {
   margin: -2px 2px 10px;
-  color: rgb(255 255 255 / 78%);
-  font-size: 12px;
+  color: var(--muted);
+  font-size: 13px;
   line-height: 1.75;
 }
 
 .feature-tools-intro code {
-  padding: 1px 5px;
-  color: rgb(106 166 255 / 94%);
+  padding: 0 2px;
+  color: var(--accent);
   font-size: 11px;
-  background: rgb(106 166 255 / 12%);
-  border: 1px solid rgb(106 166 255 / 30%);
-  border-radius: 6px;
+  background: none;
+  border: 0;
+  border-bottom: 1px dotted rgb(46 91 255 / 34%);
+  border-radius: 0;
+}
+
+.feature-tools-points {
+  margin: 0 2px 12px;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.68;
+}
+
+.feature-tools-points li + li {
+  margin-top: 3px;
+}
+
+.confirm-btn-submit {
+  --n-color: var(--accent);
+  --n-color-hover: rgb(39 78 224);
+  --n-color-pressed: rgb(35 70 202);
+  --n-color-focus: rgb(39 78 224);
+  --n-border: 1px solid var(--accent);
+  --n-border-hover: 1px solid rgb(39 78 224);
+  --n-border-pressed: 1px solid rgb(35 70 202);
+  --n-border-focus: 1px solid rgb(39 78 224);
+  --n-text-color: #fff;
+}
+
+.confirm-btn-cancel {
+  --n-color: rgb(255 255 255 / 95%);
+  --n-color-hover: #fff;
+  --n-color-pressed: rgb(244 244 240);
+  --n-color-focus: #fff;
+  --n-border: 1px solid rgb(23 26 31 / 14%);
+  --n-border-hover: 1px solid rgb(23 26 31 / 20%);
+  --n-border-pressed: 1px solid rgb(23 26 31 / 20%);
+  --n-border-focus: 1px solid rgb(23 26 31 / 20%);
+  --n-text-color: var(--muted);
 }
 
 @media (max-width: 860px) {
   .feature-tools-intro {
     margin-bottom: 8px;
-    font-size: 11px;
+    font-size: 12px;
+  }
+
+  .feature-tools-points {
+    margin-bottom: 10px;
+    font-size: 12px;
+    line-height: 1.62;
   }
 }
 </style>

@@ -99,7 +99,6 @@ async function handleSubmit() {
       <n-button
         class="operation-btn operation-btn-cancel"
         :disabled="isLoading"
-        type="warning"
         size="small"
         @click="handleDeactivate"
       >

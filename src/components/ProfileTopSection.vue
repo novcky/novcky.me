@@ -51,98 +51,104 @@
 .profile-top::after {
   content: '';
   position: absolute;
-  top: -88px;
-  right: -88px;
-  width: 210px;
-  height: 210px;
-  background: radial-gradient(circle, rgb(106 166 255 / 30%) 0%, transparent 70%);
+  top: -140px;
+  right: -96px;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgb(46 91 255 / 10%) 0%, transparent 70%);
   pointer-events: none;
 }
 
 .profile-greeting {
   margin: 0;
-  font-size: 13px;
-  color: rgb(255 255 255 / 70%);
-  letter-spacing: 0.08em;
+  color: var(--muted-2);
+  font-size: 12px;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .profile-name {
-  margin: 4px 0 8px;
-  font-size: clamp(24px, 5vw, 34px);
-  line-height: 1.1;
+  margin: 10px 0 12px;
+  font-size: clamp(32px, 5.4vw, 52px);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  font-weight: 560;
+  font-family:
+    'Iowan Old Style',
+    'Palatino Linotype',
+    'Source Han Serif SC',
+    'Noto Serif SC',
+    serif;
 }
 
 .profile-intro {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.7;
-  color: rgb(255 255 255 / 78%);
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.84;
 }
 
 .find-me {
-  margin-top: 14px;
-  padding: 10px 12px 12px;
-  border: 1px solid rgb(255 255 255 / 15%);
-  border-radius: 12px;
-  background: rgb(255 255 255 / 4%);
-  backdrop-filter: blur(6px);
+  margin-top: 20px;
+  padding-top: 10px;
+  border-top: 1px dashed rgb(23 26 31 / 16%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 18px;
 }
 
 .find-me-title {
   margin: 0;
-  color: rgb(255 255 255 / 84%);
-  font-size: 11px;
-  letter-spacing: 0.08em;
+  color: var(--muted-2);
+  font-size: 10px;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .find-me-links {
-  margin-top: 8px;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
 }
 
 .find-me-link {
-  padding: 8px 10px;
   display: inline-flex;
-  flex-direction: column;
-  gap: 3px;
-  border: 1px solid rgb(255 255 255 / 18%);
-  border-radius: 10px;
-  background: rgb(255 255 255 / 3%);
-  color: rgb(255 255 255 / 90%);
+  align-items: baseline;
+  gap: 6px;
+  border-bottom: 1px solid transparent;
+  color: var(--text);
   text-decoration: none;
-  transition: border-color 0.2s, background-color 0.2s, transform 0.2s;
+  transition: border-color 0.2s, color 0.2s;
 }
 
 .find-me-link:hover {
-  border-color: rgb(106 166 255 / 58%);
-  background: rgb(106 166 255 / 16%);
-  transform: translateY(-1px);
+  border-color: rgb(46 91 255 / 45%);
+  color: var(--accent);
 }
 
 .find-me-label {
-  color: rgb(255 255 255 / 62%);
-  font-size: 11px;
+  color: var(--muted-2);
+  font-size: 12px;
   line-height: 1.2;
 }
 
 .find-me-value {
-  color: rgb(255 255 255 / 92%);
-  font-size: 12px;
+  color: var(--text);
+  font-size: 13px;
   line-height: 1.3;
+  letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 860px) {
   .profile-intro {
-    font-size: 12px;
+    font-size: 13px;
+    line-height: 1.72;
   }
 
   .find-me-links {
-    grid-template-columns: 1fr;
+    gap: 8px 12px;
   }
 }
 </style>

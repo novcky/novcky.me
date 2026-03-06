@@ -377,17 +377,17 @@ onMounted(() => {
   flex-direction: row;
   align-items: stretch;
   overflow: visible;
-  background: linear-gradient(180deg, rgb(9 17 36 / 80%) 0%, rgb(9 17 36 / 92%) 100%);
-  border: 1px solid rgb(255 255 255 / 24%);
+  background: rgb(255 255 255 / 92%);
+  border: 1px solid rgb(23 26 31 / 13%);
   border-radius: 14px;
-  backdrop-filter: blur(8px);
-  box-shadow: rgb(0 0 0 / 34%) 0 8px 20px;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 8px 20px rgb(15 23 42 / 12%);
 }
 
 .feature-tools-divider {
   width: 1px;
   min-height: 44px;
-  background: rgb(255 255 255 / 16%);
+  background: rgb(23 26 31 / 10%);
 }
 
 :deep(.feature-tools-btn) {
@@ -401,7 +401,7 @@ onMounted(() => {
   gap: 3px;
   font-size: 11px;
   line-height: 1;
-  color: rgb(238 243 252 / 82%);
+  color: var(--muted);
   background: transparent;
   transition: all 0.2s;
   cursor: pointer;
@@ -414,8 +414,8 @@ onMounted(() => {
 
 :deep(.feature-tools-btn:hover):not(.feature-tools-btn-disabled),
 :deep(.feature-tools-btn-active) {
-  color: #ffffff;
-  background: rgb(64 158 255 / 24%);
+  color: var(--accent);
+  background: var(--accent-weak);
 }
 
 :deep(.feature-tools-btn-disabled) {
@@ -437,11 +437,11 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgb(11 16 32 / 90%);
-  border: 1px solid rgb(255 255 255 / 24%);
+  background: rgb(255 255 255 / 96%);
+  border: 1px solid rgb(23 26 31 / 14%);
   border-radius: 10px;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 6px 16px rgb(0 0 0 / 35%);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 8px 18px rgb(15 23 42 / 12%);
   z-index: 2;
 }
 
@@ -477,6 +477,30 @@ onMounted(() => {
 
 :deep(.operation-btn) {
   min-width: 76px;
+}
+
+:deep(.operation-btn-submit) {
+  --n-color: var(--accent);
+  --n-color-hover: rgb(39 78 224);
+  --n-color-pressed: rgb(35 70 202);
+  --n-color-focus: rgb(39 78 224);
+  --n-border: 1px solid var(--accent);
+  --n-border-hover: 1px solid rgb(39 78 224);
+  --n-border-pressed: 1px solid rgb(35 70 202);
+  --n-border-focus: 1px solid rgb(39 78 224);
+  --n-text-color: #fff;
+}
+
+:deep(.operation-btn-cancel) {
+  --n-color: rgb(255 255 255 / 88%);
+  --n-color-hover: #fff;
+  --n-color-pressed: rgb(244 244 240);
+  --n-color-focus: #fff;
+  --n-border: 1px solid rgb(23 26 31 / 14%);
+  --n-border-hover: 1px solid rgb(23 26 31 / 20%);
+  --n-border-pressed: 1px solid rgb(23 26 31 / 20%);
+  --n-border-focus: 1px solid rgb(23 26 31 / 20%);
+  --n-text-color: var(--muted);
 }
 
 @media (max-width: 860px) {
