@@ -7,29 +7,37 @@
       Novick Yuan
     </h1>
     <p class="profile-intro">专注 WebGIS 前端与地图交互工程化，这里聚焦两个核心案例：轨迹回放引擎源码改造、要素编辑工具能力沉淀。目标是验证复杂交互在真实业务场景中的可复用性与稳定性。</p>
-    <div class="profile-links">
-      <a
-        class="profile-link"
-        href="https://github.com/novcky"
-        target="_blank"
-        rel="noreferrer"
-      >
-        GitHub
-      </a>
-      <a
-        class="profile-link"
-        href="https://novcky.me"
-        target="_blank"
-        rel="noreferrer"
-      >
-        Blog
-      </a>
-      <!-- <a
-        class="profile-link"
-        href="mailto:hi@novcky.me"
-      >
-        Email
-      </a> -->
+    <div class="find-me">
+      <p class="find-me-title">
+        Find me on
+      </p>
+      <div class="find-me-links">
+        <a
+          class="find-me-link"
+          href="https://github.com/novcky"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <span class="find-me-label">GitHub</span>
+          <span class="find-me-value">@novcky</span>
+        </a>
+        <a
+          class="find-me-link"
+          href="mailto:hi@novcky.me"
+        >
+          <span class="find-me-label">Email</span>
+          <span class="find-me-value">hi@novcky.me</span>
+        </a>
+        <a
+          class="find-me-link"
+          href="https://novcky.me"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <span class="find-me-label">Blog</span>
+          <span class="find-me-value">novcky.me</span>
+        </a>
+      </div>
     </div>
   </section>
 </template>
@@ -72,36 +80,69 @@
   color: rgb(255 255 255 / 78%);
 }
 
-.profile-links {
+.find-me {
   margin-top: 14px;
-  display: flex;
-  flex-wrap: wrap;
+  padding: 10px 12px 12px;
+  border: 1px solid rgb(255 255 255 / 15%);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 4%);
+  backdrop-filter: blur(6px);
+}
+
+.find-me-title {
+  margin: 0;
+  color: rgb(255 255 255 / 84%);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.find-me-links {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
-.profile-link {
-  padding: 5px 10px;
+.find-me-link {
+  padding: 8px 10px;
   display: inline-flex;
-  align-items: center;
-  font-size: 12px;
-  line-height: 1;
-  color: rgb(255 255 255 / 88%);
+  flex-direction: column;
+  gap: 3px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 3%);
+  color: rgb(255 255 255 / 90%);
   text-decoration: none;
-  border: 1px solid rgb(255 255 255 / 24%);
-  border-radius: 999px;
-  background: rgb(255 255 255 / 4%);
-  transition: all 0.2s;
+  transition: border-color 0.2s, background-color 0.2s, transform 0.2s;
 }
 
-.profile-link:hover {
-  color: #ffffff;
+.find-me-link:hover {
   border-color: rgb(106 166 255 / 58%);
-  background: rgb(106 166 255 / 20%);
+  background: rgb(106 166 255 / 16%);
+  transform: translateY(-1px);
+}
+
+.find-me-label {
+  color: rgb(255 255 255 / 62%);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.find-me-value {
+  color: rgb(255 255 255 / 92%);
+  font-size: 12px;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 860px) {
   .profile-intro {
     font-size: 12px;
+  }
+
+  .find-me-links {
+    grid-template-columns: 1fr;
   }
 }
 </style>
