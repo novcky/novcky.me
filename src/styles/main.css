@@ -7,6 +7,15 @@
   --muted-2: rgb(57 68 87 / 58%);
   --accent: #2e5bff;
   --accent-weak: rgb(46 91 255 / 10%);
+  /* 这组灰蓝强调色专门给首页交互控件共用，
+     目的是把播放器、开关、工具条和提交按钮收敛到同一视觉语言里，
+     避免继续混出默认绿色或高饱和蓝带来的割裂感。 */
+  --ui-accent: rgb(92 109 149);
+  --ui-accent-hover: rgb(82 98 136);
+  --ui-accent-pressed: rgb(70 84 118);
+  --ui-accent-weak: rgb(92 109 149 / 12%);
+  --ui-accent-weak-strong: rgb(92 109 149 / 18%);
+  --ui-accent-soft: rgb(92 109 149 / 26%);
   --link: rgb(34 43 60 / 86%);
   --link-hover: rgb(20 27 39 / 96%);
   --link-border: rgb(23 26 31 / 28%);
@@ -53,13 +62,14 @@ body {
 .container {
   width: min(1160px, calc(100% - 44px));
   margin: 0 auto;
-  padding: 38px 0 66px;
+  /* 首屏顶部留白向 antfu.me 靠拢，但仍保留更适合案例展示的宽度。 */
+  padding: 84px 0 66px;
 }
 
 .site-shell {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 30px;
 }
 
 .site-block {
@@ -90,7 +100,7 @@ body {
 }
 
 .section {
-  padding: 18px 2px;
+  padding: 24px 2px;
 }
 
 h2 {
@@ -136,6 +146,7 @@ h2 {
 }
 
 .site-separator-note {
+  max-width: 44rem;
   margin: 0;
   color: var(--muted);
   font-size: 14px;
@@ -419,11 +430,11 @@ h2 {
 @media (max-width: 860px) {
   .container {
     width: calc(100% - 20px);
-    padding: 14px 0 28px;
+    padding: 68px 0 28px;
   }
 
   .section {
-    padding: 14px 0;
+    padding: 18px 0;
   }
 
   .map-wrap {
@@ -459,4 +470,105 @@ h2 {
   .leaflet-map {
     height: 440px;
   }
+}
+
+
+.site-stage {
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate;
+}
+
+/* 左上角站点 logo 采用和 antfu.me 接近的角标位：点击区域保留 48px，
+   但实际字形缩小显示，避免正文首屏被品牌标记压住。 */
+.site-brand-link {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  width: 48px;
+  height: 48px;
+  margin: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgb(23 26 31 / 78%);
+  text-decoration: none;
+  user-select: none;
+}
+
+.site-brand-link:hover {
+  color: rgb(23 26 31 / 92%);
+}
+
+.site-brand-link:focus-visible {
+  outline: 2px solid rgb(23 26 31 / 18%);
+  outline-offset: 4px;
+  border-radius: 999px;
+}
+
+.site-brand-logo {
+  width: 48px;
+  height: 48px;
+  display: block;
+}
+
+@media (min-width: 1280px) {
+  .site-brand-link {
+    position: fixed;
+  }
+}
+
+@media (max-width: 560px) {
+  .site-brand-link {
+    width: 42px;
+    height: 42px;
+    margin: 16px;
+  }
+
+  .site-brand-logo {
+    width: 42px;
+    height: 42px;
+  }
+}
+
+.site-shell {
+  position: relative;
+  z-index: 1;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+.feature-tools-btn-active {
+  color: var(--ui-accent) !important;
+  background: var(--ui-accent-weak) !important;
+}
+
+.feature-tools-btn-active:hover {
+  background: var(--ui-accent-weak-strong) !important;
+}
+
+.feature-tools-btn-active .tool-icon svg {
+  transform: scale(1.04);
+}
+
+.operation-btn-submit {
+  --n-color: var(--ui-accent) !important;
+  --n-color-hover: var(--ui-accent-hover) !important;
+  --n-color-pressed: var(--ui-accent-pressed) !important;
+  --n-color-focus: var(--ui-accent-hover) !important;
+  --n-border: 1px solid var(--ui-accent) !important;
+  --n-border-hover: 1px solid var(--ui-accent-hover) !important;
+  --n-border-pressed: 1px solid var(--ui-accent-pressed) !important;
+  --n-border-focus: 1px solid var(--ui-accent-hover) !important;
+  --n-text-color: #fff !important;
 }

@@ -290,6 +290,9 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .feature-tools-container {
+  --feature-tool-active: var(--ui-accent);
+  --feature-tool-active-bg: var(--ui-accent-weak);
+  --feature-tool-active-bg-hover: var(--ui-accent-weak-strong);
   position: relative;
   margin-bottom: 12px;
   display: none;
@@ -330,10 +333,18 @@ onBeforeUnmount(() => {
   line-height: 1.1;
 }
 
-:deep(.feature-tools-btn:hover):not(.feature-tools-btn-disabled),
+:deep(.feature-tools-btn:hover):not(.feature-tools-btn-disabled) {
+  color: rgb(59 70 95 / 96%);
+  background: rgb(23 26 31 / 3.5%);
+}
+
 :deep(.feature-tools-btn-active) {
-  color: var(--accent);
-  background: var(--accent-weak);
+  color: var(--feature-tool-active) !important;
+  background: var(--feature-tool-active-bg) !important;
+}
+
+:deep(.feature-tools-btn-active:hover) {
+  background: var(--feature-tool-active-bg-hover) !important;
 }
 
 :deep(.feature-tools-btn-disabled) {
@@ -354,6 +365,11 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.85;
+  stroke-linecap: round;
+  stroke-linejoin: round;
   transition: transform 0.2s;
 }
 
@@ -391,15 +407,15 @@ onBeforeUnmount(() => {
 }
 
 :deep(.operation-btn-submit) {
-  --n-color: var(--accent);
-  --n-color-hover: rgb(39 78 224);
-  --n-color-pressed: rgb(35 70 202);
-  --n-color-focus: rgb(39 78 224);
-  --n-border: 1px solid var(--accent);
-  --n-border-hover: 1px solid rgb(39 78 224);
-  --n-border-pressed: 1px solid rgb(35 70 202);
-  --n-border-focus: 1px solid rgb(39 78 224);
-  --n-text-color: #fff;
+  --n-color: var(--feature-tool-active) !important;
+  --n-color-hover: var(--ui-accent-hover) !important;
+  --n-color-pressed: var(--ui-accent-pressed) !important;
+  --n-color-focus: var(--ui-accent-hover) !important;
+  --n-border: 1px solid var(--feature-tool-active) !important;
+  --n-border-hover: 1px solid var(--ui-accent-hover) !important;
+  --n-border-pressed: 1px solid var(--ui-accent-pressed) !important;
+  --n-border-focus: 1px solid var(--ui-accent-hover) !important;
+  --n-text-color: #fff !important;
 }
 
 :deep(.operation-btn-cancel) {

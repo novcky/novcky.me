@@ -110,6 +110,15 @@ const workAreaText = computed(() => currentRecord.value?.workArea ?? '-')
 const lineNameText = computed(() => currentRecord.value?.lineName ?? '-')
 const speedText = computed(() => currentRecord.value?.speed ?? 0)
 
+// 播放器开关与进度条共用同一组强调色，避免默认绿色割裂整体观感。
+const playerSwitchThemeOverrides = {
+  railColor: 'rgba(23, 26, 31, 0.12)',
+  railColorActive: 'var(--ui-accent)',
+  buttonColor: '#fff',
+  boxShadowFocus: '0 0 0 2px var(--ui-accent-soft)',
+  loadingColor: 'var(--ui-accent)',
+}
+
 function schedulePlayerControlLayoutUpdate() {
   if (controlsLayoutAnimationFrameId)
     window.cancelAnimationFrame(controlsLayoutAnimationFrameId)
@@ -774,14 +783,48 @@ onBeforeUnmount(() => {
                 <n-tooltip trigger="hover">
                   <template #trigger>
                     <n-button
+                      :aria-label="player.status === 'play' ? '暂停' : '播放'"
                       :disabled="!hasTrajectory"
                       class="moving-control-btn moving-icon-btn"
                       round
                       size="small"
-                      type="primary"
                       @click="togglePlay"
                     >
-                      <span class="moving-control-icon">{{ player.status === 'play' ? '⏸' : '▶' }}</span>
+                      <span
+                        class="moving-control-icon"
+                        aria-hidden="true"
+                      >
+                        <svg
+                          v-if="player.status === 'play'"
+                          viewBox="0 0 20 20"
+                        >
+                          <rect
+                            x="4.5"
+                            y="4"
+                            width="4"
+                            height="12"
+                            rx="1.4"
+                            fill="currentColor"
+                          />
+                          <rect
+                            x="11.5"
+                            y="4"
+                            width="4"
+                            height="12"
+                            rx="1.4"
+                            fill="currentColor"
+                          />
+                        </svg>
+                        <svg
+                          v-else
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fill="currentColor"
+                            d="M6 4.75a1 1 0 0 1 1.53-.85l8.5 5.25a1 1 0 0 1 0 1.7L7.53 16.1A1 1 0 0 1 6 15.25V4.75Z"
+                          />
+                        </svg>
+                      </span>
                     </n-button>
                   </template>
                   {{ player.status === 'play' ? '暂停' : '播放' }}
@@ -789,14 +832,28 @@ onBeforeUnmount(() => {
                 <n-tooltip trigger="hover">
                   <template #trigger>
                     <n-button
+                      aria-label="停止"
                       :disabled="!hasTrajectory || player.status === 'stop'"
                       class="moving-control-btn moving-icon-btn"
                       round
                       size="small"
-                      type="error"
                       @click="stopPlayer"
                     >
-                      <span class="moving-control-icon">⏹</span>
+                      <span
+                        class="moving-control-icon"
+                        aria-hidden="true"
+                      >
+                        <svg viewBox="0 0 20 20">
+                          <rect
+                            x="4.75"
+                            y="4.75"
+                            width="10.5"
+                            height="10.5"
+                            rx="2.2"
+                            fill="currentColor"
+                          />
+                        </svg>
+                      </span>
                     </n-button>
                   </template>
                   停止
@@ -812,9 +869,12 @@ onBeforeUnmount(() => {
                     class="moving-control-btn moving-speed-btn"
                     round
                     size="small"
-                    type="info"
                   >
                     <span class="moving-speed-btn-text">{{ speedButtonText }}</span>
+                    <span
+                      class="moving-speed-btn-caret"
+                      aria-hidden="true"
+                    >▾</span>
                   </n-button>
                 </n-dropdown>
               </div>
@@ -826,6 +886,7 @@ onBeforeUnmount(() => {
               <div class="moving-loop-toggle">
                 <n-switch
                   v-model:value="player.followViewEnabled"
+                  :theme-overrides="playerSwitchThemeOverrides"
                   :disabled="!hasTrajectory"
                   size="small"
                 />
@@ -834,6 +895,7 @@ onBeforeUnmount(() => {
               <div class="moving-loop-toggle">
                 <n-switch
                   v-model:value="player.loopEnabled"
+                  :theme-overrides="playerSwitchThemeOverrides"
                   :disabled="!hasTrajectory"
                   size="small"
                 />
@@ -876,6 +938,9 @@ onBeforeUnmount(() => {
 }
 
 .moving-demo-layout {
+  --moving-accent: var(--ui-accent);
+  --moving-accent-soft: var(--ui-accent-weak-strong);
+  --moving-accent-soft-strong: var(--ui-accent-soft);
   padding: 10px 8px 8px;
 }
 
@@ -923,10 +988,10 @@ onBeforeUnmount(() => {
   bottom: 14px;
   left: 14px;
   z-index: 410;
-  padding: 10px 12px;
+  padding: 8px 9px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 7px;
   background: rgb(255 255 255 / 86%);
   border: 1px solid rgb(23 26 31 / 13%);
   border-radius: 12px;
@@ -957,37 +1022,41 @@ onBeforeUnmount(() => {
 }
 
 :deep(.moving-slider .n-slider-rail) {
-  background: rgb(23 26 31 / 14%);
+  height: 4px;
+  border-radius: 999px;
+  background: rgb(23 26 31 / 9%);
 }
 
 :deep(.moving-slider .n-slider-rail__fill) {
-  background: var(--accent) !important;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--moving-accent) !important;
 }
 
 :deep(.moving-slider .n-slider-handle-indicator) {
   background: #fff !important;
-  border: 2px solid var(--accent) !important;
-  box-shadow: 0 0 0 4px rgb(46 91 255 / 16%) !important;
+  border: 2px solid var(--moving-accent) !important;
+  box-shadow: 0 0 0 4px var(--moving-accent-soft) !important;
 }
 
 :deep(.moving-slider .n-slider-handle:hover .n-slider-handle-indicator),
 :deep(.moving-slider .n-slider-handle.n-slider-handle--active .n-slider-handle-indicator) {
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 0 5px rgb(46 91 255 / 20%) !important;
+  border-color: var(--moving-accent) !important;
+  box-shadow: 0 0 0 5px var(--moving-accent-soft-strong) !important;
 }
 
 :deep(.moving-slider .n-slider-dot--active) {
-  border-color: var(--accent) !important;
+  border-color: var(--moving-accent) !important;
 }
 
 .moving-player-time {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 30px;
-  padding: 0 10px;
+  gap: 5px;
+  height: 27px;
+  padding: 0 8px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11.5px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   background: rgb(255 255 255 / 78%);
@@ -1005,7 +1074,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
+  gap: 5px 9px;
 }
 
 .moving-player-controls-main {
@@ -1016,31 +1085,61 @@ onBeforeUnmount(() => {
 .moving-player-buttons {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
   flex-wrap: wrap;
   min-width: 0;
 }
 
 .moving-control-btn {
-  min-width: 70px;
+  --n-color: rgb(255 255 255 / 88%);
+  --n-color-hover: #fff;
+  --n-color-pressed: rgb(244 244 240);
+  --n-color-focus: #fff;
+  --n-border: 1px solid rgb(23 26 31 / 12%);
+  --n-border-hover: 1px solid rgb(23 26 31 / 16%);
+  --n-border-pressed: 1px solid rgb(23 26 31 / 16%);
+  --n-border-focus: 1px solid rgb(23 26 31 / 16%);
+  --n-ripple-color: transparent;
+  --n-text-color: var(--muted);
+  --n-text-color-hover: var(--text);
+  --n-text-color-pressed: var(--text);
+  --n-text-color-focus: var(--text);
+  min-width: 62px;
 }
 
 .moving-icon-btn {
-  min-width: 34px;
-  width: 34px;
+  min-width: 31px;
+  width: 31px;
   padding-right: 0;
   padding-left: 0;
 }
 
+:deep(.moving-control-btn .n-button__content) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
 .moving-control-icon {
-  font-size: 14px;
+  width: 13px;
+  height: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
 }
 
+.moving-control-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 .moving-speed-btn {
-  min-width: 64px;
-  padding-right: 12px;
-  padding-left: 12px;
+  min-width: 58px;
+  padding-right: 9px;
+  padding-left: 10px;
 }
 
 .moving-speed-btn-text {
@@ -1050,10 +1149,16 @@ onBeforeUnmount(() => {
   font-variant-numeric: tabular-nums;
 }
 
+.moving-speed-btn-caret {
+  color: var(--muted-2);
+  font-size: 11px;
+  transform: translateY(1px);
+}
+
 .moving-player-switches {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 9px;
   color: var(--muted);
   flex: 0 0 auto;
   flex-wrap: nowrap;
@@ -1063,11 +1168,19 @@ onBeforeUnmount(() => {
 .moving-loop-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 4px;
+  font-size: 11.5px;
   user-select: none;
 }
 
+:deep(.moving-player-switches .n-switch) {
+  --n-rail-color: rgb(23 26 31 / 12%);
+  --n-rail-color-active: var(--moving-accent);
+  --n-button-color: #fff;
+  --n-button-box-shadow: 0 1px 3px rgb(17 23 38 / 14%);
+  --n-box-shadow-focus: 0 0 0 2px var(--moving-accent-soft);
+  --n-loading-color: var(--moving-accent);
+}
 .moving-player-controls--double .moving-player-time {
   flex-basis: 100%;
   justify-content: flex-start;
