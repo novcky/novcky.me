@@ -2,19 +2,19 @@
 import * as L from 'leaflet'
 import { computed, inject, ref, watch } from 'vue'
 
-import { FEATURE_TOOLS_INJECTION_KEY } from './context'
+import { LEAFLET_FEATURE_TOOLS_INJECTION_KEY } from '../featureToolsContext'
 
 const emit = defineEmits<{
   close: []
 }>()
 
-const featureTools = inject(FEATURE_TOOLS_INJECTION_KEY)
-if (!featureTools)
-  throw new Error('featureTools context 未注入')
+const featureToolsContext = inject(LEAFLET_FEATURE_TOOLS_INJECTION_KEY)
+if (!featureToolsContext)
+  throw new Error('LeafletFeatureToolsContext 未注入')
 
-const componentName = 'BtnMerge'
+const toolKey = 'merge'
 const isLoading = ref(false)
-const isActive = computed(() => featureTools.activeComponent.value === componentName)
+const isActive = computed(() => featureToolsContext.activeToolKey.value === toolKey)
 
 watch(
   () => isActive.value,
@@ -27,71 +27,71 @@ watch(
 )
 
 function handleActivate() {
-  featureTools.setMultipleMode(true)
+  featureToolsContext.setMultiSelectMode(true)
 
-  if (featureTools.curFeatures.value[0]) {
-    const { id } = featureTools.curFeatures.value[0]
-    const polygon = featureTools.polygonGroup.getLayers()[0]
+  if (featureToolsContext.selectedFeatures.value[0]) {
+    const { id } = featureToolsContext.selectedFeatures.value[0]
+    const polygon = featureToolsContext.polygonGroup.getLayers()[0]
     if (polygon) {
       polygon.on('click', (event) => {
         L.DomEvent.stopPropagation(event)
         polygon.remove()
-        featureTools.polygonGroup.removeLayer(polygon)
-        featureTools.curFeatures.value = featureTools.curFeatures.value.filter(item => item.id !== id)
+        featureToolsContext.polygonGroup.removeLayer(polygon)
+        featureToolsContext.selectedFeatures.value = featureToolsContext.selectedFeatures.value.filter(item => item.id !== id)
       })
     }
   }
 }
 
 function handleDeactivate() {
-  featureTools.setMultipleMode(false)
+  featureToolsContext.setMultiSelectMode(false)
   emit('close')
 }
 
 function handleReset() {
-  featureTools.clearPolygonGroup()
+  featureToolsContext.clearPolygonGroup()
   isLoading.value = false
 }
 
 async function handleSubmit() {
-  const layers = featureTools.polygonGroup.getLayers()
+  const layers = featureToolsContext.polygonGroup.getLayers()
   if (layers.length < 2) {
-    featureTools.notify('warning', '请至少选择两个要素')
+    featureToolsContext.notify('warning', '请至少选择两个要素')
     return
   }
 
   isLoading.value = true
-  const { mergeResult, message } = featureTools.mergePolygon(layers)
+  const { mergeResult, message } = featureToolsContext.mergePolygon(layers)
   if (!mergeResult) {
-    featureTools.notify('error', message ?? '合并失败')
+    featureToolsContext.notify('error', message ?? '合并失败')
     isLoading.value = false
     return
   }
 
-  const mainFeatureId = featureTools.curFeatures.value[0]?.id
+  const mainFeatureId = featureToolsContext.selectedFeatures.value[0]?.id
   if (!mainFeatureId) {
-    featureTools.notify('error', '缺少主要素，无法提交')
+    featureToolsContext.notify('error', '缺少主要素，无法提交')
     isLoading.value = false
     return
   }
 
   // 先更新保留要素，再删除其他要素，避免中途失败时出现整批要素被删空的风险。
-  const updateResult = await featureTools.repository.updateFeatureGeometry(mainFeatureId, mergeResult.geometry)
+  const updateResult = await featureToolsContext.repository.updateFeatureGeometry(mainFeatureId, mergeResult.geometry)
   if (updateResult.status !== 200 || !updateResult.data.includes('wfs:SUCCESS')) {
-    featureTools.notify('error', '合并失败')
+    featureToolsContext.notify('error', '合并失败')
     isLoading.value = false
     return
   }
 
-  const otherIds = featureTools.curFeatures.value.slice(1).map(item => item.id)
+  const otherIds = featureToolsContext.selectedFeatures.value.slice(1).map(item => item.id)
   if (otherIds.length > 0) {
-    const deleteResult = await featureTools.repository.deleteFeatures(otherIds)
+    const deleteResult = await featureToolsContext.repository.deleteFeatures(otherIds)
     if (deleteResult.status !== 200 || !deleteResult.data.includes('wfs:SUCCESS'))
-      featureTools.notify('warning', '合并成功，但清理旧要素失败')
+      featureToolsContext.notify('warning', '合并成功，但清理旧要素失败')
   }
 
-  featureTools.notify('success', '合并成功')
-  featureTools.reloadLayer()
+  featureToolsContext.notify('success', '合并成功')
+  featureToolsContext.reloadLayer()
   handleDeactivate()
 }
 </script>

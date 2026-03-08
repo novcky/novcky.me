@@ -2,25 +2,25 @@
 import * as L from 'leaflet'
 import { computed, inject, ref, watch } from 'vue'
 
-import { FEATURE_TOOLS_INJECTION_KEY } from './context'
-import { extractGeometry } from './tools/geojson'
+import { LEAFLET_FEATURE_TOOLS_INJECTION_KEY } from '../featureToolsContext'
+import { extractGeometry } from '../tools/geojson'
 import {
   clearDrawLayers,
   ensureGeoman,
-} from './tools/geoman'
+} from '../tools/geoman'
 
 const emit = defineEmits<{
   close: []
 }>()
 
-const featureTools = inject(FEATURE_TOOLS_INJECTION_KEY)
-if (!featureTools)
-  throw new Error('featureTools context 未注入')
+const featureToolsContext = inject(LEAFLET_FEATURE_TOOLS_INJECTION_KEY)
+if (!featureToolsContext)
+  throw new Error('LeafletFeatureToolsContext 未注入')
 
-const componentName = 'BtnSplit'
+const toolKey = 'split'
 const clipResultLayer = ref<L.GeoJSON | null>(null)
 const isLoading = ref(false)
-const isActive = computed(() => featureTools.activeComponent.value === componentName)
+const isActive = computed(() => featureToolsContext.activeToolKey.value === toolKey)
 
 watch(
   () => isActive.value,
@@ -33,15 +33,15 @@ watch(
 )
 
 function handleActivate() {
-  if (!featureTools.map.value)
+  if (!featureToolsContext.map.value)
     return
-  if (!ensureGeoman(featureTools.pm.value, featureTools.notify, '切割'))
+  if (!ensureGeoman(featureToolsContext.pm.value, featureToolsContext.notify, '切割'))
     return
 
-  featureTools.setEnableMapClickEvents(false)
-  clipResultLayer.value = clipResultLayer.value ?? L.geoJSON(null).addTo(featureTools.map.value)
+  featureToolsContext.setMapSelectionEnabled(false)
+  clipResultLayer.value = clipResultLayer.value ?? L.geoJSON(null).addTo(featureToolsContext.map.value)
 
-  featureTools.pm.value?.enableDraw?.('Line', {
+  featureToolsContext.pm.value?.enableDraw?.('Line', {
     snappable: true,
     snapDistance: 10,
     allowSelfIntersection: false,
@@ -53,20 +53,20 @@ function handleActivate() {
     },
   })
 
-  featureTools.map.value.on('pm:create', splitFeatures)
+  featureToolsContext.map.value.on('pm:create', splitFeatures)
 }
 
 function handleDeactivate() {
-  featureTools.setEnableMapClickEvents(true)
+  featureToolsContext.setMapSelectionEnabled(true)
   emit('close')
 }
 
 function handleReset() {
   clipResultLayer.value?.clearLayers()
-  featureTools.pm.value?.disableDraw?.()
-  clearDrawLayers(featureTools.pm.value)
-  featureTools.map.value?.off('pm:create', splitFeatures)
-  featureTools.clearPolygonGroup()
+  featureToolsContext.pm.value?.disableDraw?.()
+  clearDrawLayers(featureToolsContext.pm.value)
+  featureToolsContext.map.value?.off('pm:create', splitFeatures)
+  featureToolsContext.clearPolygonGroup()
   isLoading.value = false
 }
 
@@ -74,15 +74,15 @@ function splitFeatures(event: L.LeafletEvent) {
   if (!clipResultLayer.value)
     return
 
-  const targetFeature = featureTools.curFeatures.value[0]
+  const targetFeature = featureToolsContext.selectedFeatures.value[0]
   if (!targetFeature) {
-    featureTools.notify('warning', '请先选择待切割图斑')
+    featureToolsContext.notify('warning', '请先选择待切割图斑')
     return
   }
 
   clipResultLayer.value.clearLayers()
   const clipLine = (event as L.LeafletEvent & { layer: L.Polyline }).layer
-  const { resultLayers, msg } = featureTools.splitPolygon(
+  const { resultLayers, msg } = featureToolsContext.splitPolygon(
     {
       type: 'Feature',
       geometry: targetFeature.geometry,
@@ -92,7 +92,7 @@ function splitFeatures(event: L.LeafletEvent) {
   )
 
   if (msg) {
-    featureTools.notify('error', msg)
+    featureToolsContext.notify('error', msg)
     return
   }
 
@@ -103,7 +103,7 @@ function splitFeatures(event: L.LeafletEvent) {
 
 async function handleSubmit() {
   if (!clipResultLayer.value) {
-    featureTools.notify('warning', '请先执行切割')
+    featureToolsContext.notify('warning', '请先执行切割')
     return
   }
 
@@ -117,14 +117,14 @@ async function handleSubmit() {
     })
 
   if (geometries.length < 2) {
-    featureTools.notify('warning', '请先完成有效切割')
+    featureToolsContext.notify('warning', '请先完成有效切割')
     isLoading.value = false
     return
   }
 
-  const mainFeatureId = featureTools.curFeatures.value[0]?.id
+  const mainFeatureId = featureToolsContext.selectedFeatures.value[0]?.id
   if (!mainFeatureId) {
-    featureTools.notify('error', '缺少主图斑，无法提交')
+    featureToolsContext.notify('error', '缺少主图斑，无法提交')
     isLoading.value = false
     return
   }
@@ -132,26 +132,26 @@ async function handleSubmit() {
   // 先新增其余切割片段，再更新主图斑，失败时至少可以保持原图斑可回滚。
   const appendPayload = geometries.slice(1).map(geometry => ({
     geometry,
-    properties: featureTools.curFeatures.value[0]?.properties,
+    properties: featureToolsContext.selectedFeatures.value[0]?.properties,
   }))
 
   if (appendPayload.length > 0) {
-    const addResult = await featureTools.repository.addFeatures(appendPayload)
+    const addResult = await featureToolsContext.repository.addFeatures(appendPayload)
     if (addResult.status !== 200 || !addResult.data.includes('wfs:SUCCESS')) {
-      featureTools.notify('error', '切割提交失败（新增片段失败）')
+      featureToolsContext.notify('error', '切割提交失败（新增片段失败）')
       isLoading.value = false
       return
     }
   }
 
-  const updateResult = await featureTools.repository.updateFeatureGeometry(mainFeatureId, geometries[0])
+  const updateResult = await featureToolsContext.repository.updateFeatureGeometry(mainFeatureId, geometries[0])
   if (updateResult.status === 200 && updateResult.data.includes('wfs:SUCCESS')) {
-    featureTools.notify('success', '切割成功')
-    featureTools.reloadLayer()
+    featureToolsContext.notify('success', '切割成功')
+    featureToolsContext.reloadLayer()
     handleDeactivate()
   }
   else {
-    featureTools.notify('warning', '切割片段已新增，但主图斑更新失败')
+    featureToolsContext.notify('warning', '切割片段已新增，但主图斑更新失败')
     isLoading.value = false
   }
 }

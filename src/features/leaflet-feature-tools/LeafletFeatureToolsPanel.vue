@@ -4,18 +4,18 @@ import type {
   FeatureRepository,
   GeomanInstance,
   NoticeType,
-} from './context'
+} from './featureToolsContext'
 import * as L from 'leaflet'
 
 import { computed, nextTick, onBeforeUnmount, provide, ref, watch } from 'vue'
-import BtnAdd from './btnAdd.vue'
-import BtnDel from './btnDel.vue'
-import BtnEdit from './btnEdit.vue'
-import BtnMerge from './btnMerge.vue'
-import BtnSplit from './btnSplit.vue'
+import AddFeatureButton from './buttons/AddFeatureButton.vue'
+import DeleteFeatureButton from './buttons/DeleteFeatureButton.vue'
+import EditFeatureButton from './buttons/EditFeatureButton.vue'
+import MergeFeatureButton from './buttons/MergeFeatureButton.vue'
+import SplitFeatureButton from './buttons/SplitFeatureButton.vue'
 import {
-  FEATURE_TOOLS_INJECTION_KEY,
-} from './context'
+  LEAFLET_FEATURE_TOOLS_INJECTION_KEY,
+} from './featureToolsContext'
 import {
   clearDrawLayers,
   drawPolygon,
@@ -41,37 +41,37 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const components = [
-  { key: 'BtnAdd', component: BtnAdd },
-  { key: 'BtnEdit', component: BtnEdit },
-  { key: 'BtnSplit', component: BtnSplit },
-  { key: 'BtnMerge', component: BtnMerge },
-  { key: 'BtnDel', component: BtnDel },
+const toolbarItems = [
+  { key: 'add', component: AddFeatureButton },
+  { key: 'edit', component: EditFeatureButton },
+  { key: 'split', component: SplitFeatureButton },
+  { key: 'merge', component: MergeFeatureButton },
+  { key: 'delete', component: DeleteFeatureButton },
 ]
 
-const activeComponent = ref('')
-const curFeatures = ref<DemoFeature[]>([])
-const isMultipleMode = ref(false)
-const enableMapClickEvents = ref(true)
+const activeToolKey = ref('')
+const selectedFeatures = ref<DemoFeature[]>([])
+const isMultiSelectMode = ref(false)
+const isMapSelectionEnabled = ref(true)
 const isControlMounted = ref(false)
-const featureToolsContainerRef = ref<HTMLDivElement | null>(null)
+const toolbarContainerRef = ref<HTMLDivElement | null>(null)
 const polygonGroup = L.featureGroup()
-const featureToolsControl = L.control({ position: props.position })
+const toolbarControl = L.control({ position: props.position })
 
 const map = computed(() => props.map)
 const pm = computed(() => (map.value as (L.Map & { pm?: GeomanInstance }) | null)?.pm ?? null)
-const curLayerName = computed(() => props.layerName)
+const currentLayerName = computed(() => props.layerName)
 
-function setActiveComponent(componentName = '') {
-  activeComponent.value = componentName
+function setActiveToolKey(toolKey = '') {
+  activeToolKey.value = toolKey
 }
 
-function setMultipleMode(newValue: boolean) {
-  isMultipleMode.value = newValue
+function setMultiSelectMode(newValue: boolean) {
+  isMultiSelectMode.value = newValue
 }
 
-function setEnableMapClickEvents(newValue: boolean) {
-  enableMapClickEvents.value = newValue
+function setMapSelectionEnabled(newValue: boolean) {
+  isMapSelectionEnabled.value = newValue
 }
 
 function notify(type: NoticeType, message: string) {
@@ -87,11 +87,11 @@ async function confirmAction(message: string) {
   return false
 }
 
-function componentClass(componentName: string) {
-  if (activeComponent.value === '')
+function toolButtonClass(toolKey: string) {
+  if (activeToolKey.value === '')
     return ''
 
-  return activeComponent.value === componentName
+  return activeToolKey.value === toolKey
     ? 'feature-tools-btn-active'
     : 'feature-tools-btn-disabled'
 }
@@ -106,12 +106,12 @@ function drawFeature(feature: DemoFeature) {
     },
   })
 
-  if (isMultipleMode.value) {
+  if (isMultiSelectMode.value) {
     polygon.on('click', (event) => {
       L.DomEvent.stopPropagation(event)
       polygon.remove()
       polygonGroup.removeLayer(polygon)
-      curFeatures.value = curFeatures.value.filter(item => item.id !== feature.id)
+      selectedFeatures.value = selectedFeatures.value.filter(item => item.id !== feature.id)
     })
   }
 
@@ -124,31 +124,31 @@ function clearPolygonGroup() {
     polygonGroup.removeLayer(layer)
   })
 
-  curFeatures.value = []
+  selectedFeatures.value = []
 }
 
-function handleClickComponent(componentName: string) {
-  if (!curLayerName.value) {
+function handleClickTool(toolKey: string) {
+  if (!currentLayerName.value) {
     notify('warning', '请先选择图层')
     return
   }
 
-  if (activeComponent.value !== '') {
+  if (activeToolKey.value !== '') {
     notify('info', '请先完成当前操作或点击取消')
     return
   }
 
-  const restrictedComponents = ['BtnEdit', 'BtnSplit', 'BtnDel']
-  if (restrictedComponents.includes(componentName) && polygonGroup.getLayers().length < 1) {
+  const restrictedTools = ['edit', 'split', 'delete']
+  if (restrictedTools.includes(toolKey) && polygonGroup.getLayers().length < 1) {
     notify('warning', '请先选择要操作的要素')
     return
   }
 
-  setActiveComponent(componentName)
+  setActiveToolKey(toolKey)
 }
 
-function handleCloseComponent() {
-  setActiveComponent('')
+function handleCloseTool() {
+  setActiveToolKey('')
 }
 
 function reloadLayer() {
@@ -157,43 +157,43 @@ function reloadLayer() {
 }
 
 async function onMapClick(event: L.LeafletMouseEvent) {
-  if (!enableMapClickEvents.value)
+  if (!isMapSelectionEnabled.value)
     return
 
   const feature = await props.repository.queryByPoint(event.latlng)
   if (!feature)
     return
 
-  if (curFeatures.value.some(item => item.id === feature.id))
+  if (selectedFeatures.value.some(item => item.id === feature.id))
     return
 
-  if (isMultipleMode.value) {
-    curFeatures.value.push(feature)
+  if (isMultiSelectMode.value) {
+    selectedFeatures.value.push(feature)
   }
   else {
     clearPolygonGroup()
-    curFeatures.value = [feature]
+    selectedFeatures.value = [feature]
   }
 
   drawFeature(feature)
 }
 
-featureToolsControl.onAdd = () => {
-  if (!map.value || !featureToolsContainerRef.value)
+toolbarControl.onAdd = () => {
+  if (!map.value || !toolbarContainerRef.value)
     return L.DomUtil.create('div')
 
-  featureToolsContainerRef.value.style.display = 'flex'
+  toolbarContainerRef.value.style.display = 'flex'
   polygonGroup.addTo(map.value)
   map.value.on('click', onMapClick)
   map.value.getContainer().style.cursor = 'pointer'
-  return featureToolsContainerRef.value
+  return toolbarContainerRef.value
 }
 
-featureToolsControl.onRemove = () => {
+toolbarControl.onRemove = () => {
   if (!map.value)
     return
 
-  handleCloseComponent()
+  handleCloseTool()
   polygonGroup.remove()
   clearPolygonGroup()
   clearDrawLayers(pm.value)
@@ -207,10 +207,10 @@ async function mountControl() {
     return
 
   await nextTick()
-  if (!featureToolsContainerRef.value)
+  if (!toolbarContainerRef.value)
     return
 
-  featureToolsControl.addTo(map.value)
+  toolbarControl.addTo(map.value)
   isControlMounted.value = true
 
   if (!pm.value)
@@ -221,7 +221,7 @@ function unmountControl() {
   if (!isControlMounted.value)
     return
 
-  featureToolsControl.remove()
+  toolbarControl.remove()
   isControlMounted.value = false
 }
 
@@ -236,12 +236,11 @@ watch(
   { immediate: true },
 )
 
-provide(FEATURE_TOOLS_INJECTION_KEY, {
-  activeComponent,
+provide(LEAFLET_FEATURE_TOOLS_INJECTION_KEY, {
+  activeToolKey,
   clearPolygonGroup,
   confirm: confirmAction,
-  curFeatures,
-  curLayerName,
+  currentLayerName,
   drawFeature,
   map,
   mergePolygon,
@@ -250,9 +249,10 @@ provide(FEATURE_TOOLS_INJECTION_KEY, {
   polygonGroup,
   repository: props.repository,
   reloadLayer,
-  setActiveComponent,
-  setEnableMapClickEvents,
-  setMultipleMode,
+  selectedFeatures,
+  setActiveToolKey,
+  setMapSelectionEnabled,
+  setMultiSelectMode,
   splitPolygon,
 })
 
@@ -264,13 +264,13 @@ onBeforeUnmount(() => {
 
 <template>
   <div
-    ref="featureToolsContainerRef"
+    ref="toolbarContainerRef"
     class="feature-tools-container"
     @click.stop
     @mousedown.stop
   >
     <template
-      v-for="(item, index) in components"
+      v-for="(item, index) in toolbarItems"
       :key="`feature-tools-btn-${item.key}`"
     >
       <div
@@ -280,9 +280,9 @@ onBeforeUnmount(() => {
       <component
         :is="item.component"
         class="feature-tools-btn"
-        :class="componentClass(item.key)"
-        @click="handleClickComponent(item.key)"
-        @close="handleCloseComponent"
+        :class="toolButtonClass(item.key)"
+        @click="handleClickTool(item.key)"
+        @close="handleCloseTool"
       />
     </template>
   </div>

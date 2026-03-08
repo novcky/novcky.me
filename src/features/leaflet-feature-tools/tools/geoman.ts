@@ -3,7 +3,7 @@ import type * as L from 'leaflet'
 import type {
   GeomanInstance,
   NoticeType,
-} from '../context'
+} from '../featureToolsContext'
 
 type Notify = (type: NoticeType, message: string) => void
 

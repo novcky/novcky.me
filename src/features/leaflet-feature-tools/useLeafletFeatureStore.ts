@@ -4,7 +4,7 @@ import type {
   DemoFeature,
   NewFeatureInput,
   OperationResult,
-} from '@/components/leaflet-feature-tools/context'
+} from '@/features/leaflet-feature-tools/featureToolsContext'
 import * as turf from '@turf/turf'
 
 import { ref } from 'vue'

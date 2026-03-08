@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import { computed, inject, ref, watch } from 'vue'
 
-import { FEATURE_TOOLS_INJECTION_KEY } from './context'
+import { LEAFLET_FEATURE_TOOLS_INJECTION_KEY } from '../featureToolsContext'
 
 const emit = defineEmits<{
   close: []
 }>()
 
-const featureTools = inject(FEATURE_TOOLS_INJECTION_KEY)
-if (!featureTools)
-  throw new Error('featureTools context 未注入')
+const featureToolsContext = inject(LEAFLET_FEATURE_TOOLS_INJECTION_KEY)
+if (!featureToolsContext)
+  throw new Error('LeafletFeatureToolsContext 未注入')
 
-const componentName = 'BtnDel'
+const toolKey = 'delete'
 const isLoading = ref(false)
-const isActive = computed(() => featureTools.activeComponent.value === componentName)
+const isActive = computed(() => featureToolsContext.activeToolKey.value === toolKey)
 
 watch(
   () => isActive.value,
@@ -26,8 +26,8 @@ watch(
 )
 
 async function handleActivate() {
-  featureTools.setEnableMapClickEvents(false)
-  const confirmed = await featureTools.confirm('是否移除该要素？移除后不可恢复。')
+  featureToolsContext.setMapSelectionEnabled(false)
+  const confirmed = await featureToolsContext.confirm('是否移除该要素？移除后不可恢复。')
   if (!confirmed) {
     handleDeactivate()
     return
@@ -37,7 +37,7 @@ async function handleActivate() {
 }
 
 function handleDeactivate() {
-  featureTools.setEnableMapClickEvents(true)
+  featureToolsContext.setMapSelectionEnabled(true)
   emit('close')
 }
 
@@ -46,21 +46,21 @@ function handleReset() {
 }
 
 async function handleSubmit() {
-  const targetFeature = featureTools.curFeatures.value[0]
+  const targetFeature = featureToolsContext.selectedFeatures.value[0]
   if (!targetFeature) {
-    featureTools.notify('warning', '请先选择要删除的图斑')
+    featureToolsContext.notify('warning', '请先选择要删除的图斑')
     handleDeactivate()
     return
   }
 
   isLoading.value = true
-  const { status, data } = await featureTools.repository.deleteFeatures([targetFeature.id])
+  const { status, data } = await featureToolsContext.repository.deleteFeatures([targetFeature.id])
   if (status === 200 && data.includes('wfs:SUCCESS')) {
-    featureTools.notify('success', '删除成功')
-    featureTools.reloadLayer()
+    featureToolsContext.notify('success', '删除成功')
+    featureToolsContext.reloadLayer()
   }
   else {
-    featureTools.notify('error', '删除失败')
+    featureToolsContext.notify('error', '删除失败')
   }
 
   handleDeactivate()

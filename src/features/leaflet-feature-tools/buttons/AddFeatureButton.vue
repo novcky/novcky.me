@@ -1,25 +1,25 @@
 <script setup lang="ts">
 import { computed, inject, ref, watch } from 'vue'
 
-import { FEATURE_TOOLS_INJECTION_KEY } from './context'
-import { extractGeometry } from './tools/geojson'
+import { LEAFLET_FEATURE_TOOLS_INJECTION_KEY } from '../featureToolsContext'
+import { extractGeometry } from '../tools/geojson'
 import {
   clearDrawLayers,
   ensureGeoman,
   getDrawLayers,
-} from './tools/geoman'
+} from '../tools/geoman'
 
 const emit = defineEmits<{
   close: []
 }>()
 
-const featureTools = inject(FEATURE_TOOLS_INJECTION_KEY)
-if (!featureTools)
-  throw new Error('featureTools context 未注入')
+const featureToolsContext = inject(LEAFLET_FEATURE_TOOLS_INJECTION_KEY)
+if (!featureToolsContext)
+  throw new Error('LeafletFeatureToolsContext 未注入')
 
-const componentName = 'BtnAdd'
+const toolKey = 'add'
 const isLoading = ref(false)
-const isActive = computed(() => featureTools.activeComponent.value === componentName)
+const isActive = computed(() => featureToolsContext.activeToolKey.value === toolKey)
 
 watch(
   () => isActive.value,
@@ -32,40 +32,40 @@ watch(
 )
 
 function handleActivate() {
-  if (!ensureGeoman(featureTools.pm.value, featureTools.notify, '新增'))
+  if (!ensureGeoman(featureToolsContext.pm.value, featureToolsContext.notify, '新增'))
     return
 
-  featureTools.setEnableMapClickEvents(false)
-  featureTools.clearPolygonGroup()
-  featureTools.pm.value?.enableDraw?.('Polygon')
+  featureToolsContext.setMapSelectionEnabled(false)
+  featureToolsContext.clearPolygonGroup()
+  featureToolsContext.pm.value?.enableDraw?.('Polygon')
 }
 
 function handleDeactivate() {
-  featureTools.setEnableMapClickEvents(true)
+  featureToolsContext.setMapSelectionEnabled(true)
   emit('close')
 }
 
 function handleReset() {
-  featureTools.pm.value?.disableDraw?.()
-  clearDrawLayers(featureTools.pm.value)
+  featureToolsContext.pm.value?.disableDraw?.()
+  clearDrawLayers(featureToolsContext.pm.value)
   isLoading.value = false
 }
 
 async function handleSubmit() {
-  const layers = getDrawLayers(featureTools.pm.value)
+  const layers = getDrawLayers(featureToolsContext.pm.value)
   if (layers.length < 1) {
-    featureTools.notify('warning', '请先绘制图形')
+    featureToolsContext.notify('warning', '请先绘制图形')
     return
   }
 
   const geometry = extractGeometry(layers[0].toGeoJSON())
   if (!geometry) {
-    featureTools.notify('error', '绘制结果不是有效多边形')
+    featureToolsContext.notify('error', '绘制结果不是有效多边形')
     return
   }
 
   isLoading.value = true
-  const { status, data } = await featureTools.repository.addFeatures([
+  const { status, data } = await featureToolsContext.repository.addFeatures([
     {
       geometry,
       properties: {
@@ -75,12 +75,12 @@ async function handleSubmit() {
   ])
 
   if (status === 200 && data.includes('wfs:SUCCESS')) {
-    featureTools.notify('success', '新增成功')
-    featureTools.reloadLayer()
+    featureToolsContext.notify('success', '新增成功')
+    featureToolsContext.reloadLayer()
     handleDeactivate()
   }
   else {
-    featureTools.notify('error', '新增失败')
+    featureToolsContext.notify('error', '新增失败')
     isLoading.value = false
   }
 }

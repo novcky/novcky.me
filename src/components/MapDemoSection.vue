@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import type * as L from 'leaflet'
-import type { FeatureRepository, NoticeType } from '@/components/leaflet-feature-tools/context'
+import type { FeatureRepository, NoticeType } from '@/features/leaflet-feature-tools/featureToolsContext'
 import type { BaseTileLayerController } from '@/lib/tileLayer'
 
 import * as Leaflet from 'leaflet'
 import { onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 
-import FeatureTools from '@/components/leaflet-feature-tools/index.vue'
-import { drawPolygon } from '@/components/leaflet-feature-tools/tools'
-import { useLeafletFeatureStore } from '@/composables/useLeafletFeatureStore'
-import { initialLeafletFeatures } from '@/constants/leafletFeatures'
+import { initialLeafletFeatures } from '@/features/leaflet-feature-tools/leafletFeatureSeed'
+import LeafletFeatureToolsPanel from '@/features/leaflet-feature-tools/LeafletFeatureToolsPanel.vue'
+import { drawPolygon } from '@/features/leaflet-feature-tools/tools'
+import { useLeafletFeatureStore } from '@/features/leaflet-feature-tools/useLeafletFeatureStore'
 import { attachBaseTileLayer } from '@/lib/tileLayer'
 
 interface Notice {
@@ -214,7 +214,7 @@ onBeforeUnmount(() => {
         class="map leaflet-map"
         aria-label="Leaflet featureTools demo"
       />
-      <FeatureTools
+      <LeafletFeatureToolsPanel
         :map="mapInstance"
         :repository="repository"
         :notify="notify"

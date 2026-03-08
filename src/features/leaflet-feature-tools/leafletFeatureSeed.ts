@@ -1,4 +1,4 @@
-import type { DemoFeature } from '@/components/leaflet-feature-tools/context'
+import type { DemoFeature } from '@/features/leaflet-feature-tools/featureToolsContext'
 
 export const initialLeafletFeatures: DemoFeature[] = [
   {

@@ -37,11 +37,11 @@ export interface GeomanInstance {
   disableGlobalEditMode?: () => void
 }
 
-export interface FeatureToolsContext {
-  activeComponent: Ref<string>
+export interface LeafletFeatureToolsContext {
+  activeToolKey: Ref<string>
   clearPolygonGroup: () => void
-  curFeatures: Ref<DemoFeature[]>
-  curLayerName: ComputedRef<string>
+  selectedFeatures: Ref<DemoFeature[]>
+  currentLayerName: ComputedRef<string>
   drawFeature: (feature: DemoFeature) => void
   map: ComputedRef<L.Map | null>
   mergePolygon: (layers: L.Layer[]) => {
@@ -53,9 +53,9 @@ export interface FeatureToolsContext {
   polygonGroup: L.FeatureGroup
   repository: FeatureRepository
   reloadLayer: () => void
-  setActiveComponent: (componentName?: string) => void
-  setEnableMapClickEvents: (newValue: boolean) => void
-  setMultipleMode: (newValue: boolean) => void
+  setActiveToolKey: (toolKey?: string) => void
+  setMapSelectionEnabled: (newValue: boolean) => void
+  setMultiSelectMode: (newValue: boolean) => void
   splitPolygon: (feature: GeoJSON.Feature<Polygon | MultiPolygon>, clipLine: L.Polyline) => {
     resultLayers?: L.GeoJSON[]
     msg?: string
@@ -63,4 +63,4 @@ export interface FeatureToolsContext {
   confirm: (message: string) => Promise<boolean>
 }
 
-export const FEATURE_TOOLS_INJECTION_KEY: InjectionKey<FeatureToolsContext> = Symbol('feature-tools')
+export const LEAFLET_FEATURE_TOOLS_INJECTION_KEY: InjectionKey<LeafletFeatureToolsContext> = Symbol('leaflet-feature-tools')

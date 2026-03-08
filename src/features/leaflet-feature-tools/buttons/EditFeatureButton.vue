@@ -2,21 +2,21 @@
 import type * as L from 'leaflet'
 import { computed, inject, ref, watch } from 'vue'
 
-import { FEATURE_TOOLS_INJECTION_KEY } from './context'
-import { extractGeometry } from './tools/geojson'
-import { ensureGeoman } from './tools/geoman'
+import { LEAFLET_FEATURE_TOOLS_INJECTION_KEY } from '../featureToolsContext'
+import { extractGeometry } from '../tools/geojson'
+import { ensureGeoman } from '../tools/geoman'
 
 const emit = defineEmits<{
   close: []
 }>()
 
-const featureTools = inject(FEATURE_TOOLS_INJECTION_KEY)
-if (!featureTools)
-  throw new Error('featureTools context 未注入')
+const featureToolsContext = inject(LEAFLET_FEATURE_TOOLS_INJECTION_KEY)
+if (!featureToolsContext)
+  throw new Error('LeafletFeatureToolsContext 未注入')
 
-const componentName = 'BtnEdit'
+const toolKey = 'edit'
 const isLoading = ref(false)
-const isActive = computed(() => featureTools.activeComponent.value === componentName)
+const isActive = computed(() => featureToolsContext.activeToolKey.value === toolKey)
 
 watch(
   () => isActive.value,
@@ -29,34 +29,34 @@ watch(
 )
 
 function handleActivate() {
-  if (!ensureGeoman(featureTools.pm.value, featureTools.notify, '编辑'))
+  if (!ensureGeoman(featureToolsContext.pm.value, featureToolsContext.notify, '编辑'))
     return
 
-  if (!featureTools.curFeatures.value[0]) {
-    featureTools.notify('warning', '请先选择要编辑的图斑')
+  if (!featureToolsContext.selectedFeatures.value[0]) {
+    featureToolsContext.notify('warning', '请先选择要编辑的图斑')
     handleDeactivate()
     return
   }
 
-  featureTools.setEnableMapClickEvents(false)
+  featureToolsContext.setMapSelectionEnabled(false)
   setSelectedLayersEditing(true)
 }
 
 function handleDeactivate() {
-  featureTools.setEnableMapClickEvents(true)
+  featureToolsContext.setMapSelectionEnabled(true)
   emit('close')
 }
 
 function handleReset() {
   setSelectedLayersEditing(false)
-  featureTools.clearPolygonGroup()
-  if (featureTools.curFeatures.value[0])
-    featureTools.drawFeature(featureTools.curFeatures.value[0])
+  featureToolsContext.clearPolygonGroup()
+  if (featureToolsContext.selectedFeatures.value[0])
+    featureToolsContext.drawFeature(featureToolsContext.selectedFeatures.value[0])
   isLoading.value = false
 }
 
 function setSelectedLayersEditing(enabled: boolean) {
-  const layers = featureTools.polygonGroup.getLayers()
+  const layers = featureToolsContext.polygonGroup.getLayers()
   if (layers.length < 1)
     return
 
@@ -87,33 +87,33 @@ function setSelectedLayersEditing(enabled: boolean) {
 }
 
 async function handleSubmit() {
-  const targetFeature = featureTools.curFeatures.value[0]
+  const targetFeature = featureToolsContext.selectedFeatures.value[0]
   if (!targetFeature) {
-    featureTools.notify('warning', '请先选择要编辑的图斑')
+    featureToolsContext.notify('warning', '请先选择要编辑的图斑')
     return
   }
 
-  const layers = featureTools.polygonGroup.getLayers()
+  const layers = featureToolsContext.polygonGroup.getLayers()
   if (layers.length < 1 || !('toGeoJSON' in layers[0])) {
-    featureTools.notify('warning', '未检测到可提交的编辑结果')
+    featureToolsContext.notify('warning', '未检测到可提交的编辑结果')
     return
   }
 
   const geometry = extractGeometry(layers[0].toGeoJSON())
   if (!geometry) {
-    featureTools.notify('error', '编辑结果不是有效多边形')
+    featureToolsContext.notify('error', '编辑结果不是有效多边形')
     return
   }
 
   isLoading.value = true
-  const { status, data } = await featureTools.repository.updateFeatureGeometry(targetFeature.id, geometry)
+  const { status, data } = await featureToolsContext.repository.updateFeatureGeometry(targetFeature.id, geometry)
   if (status === 200 && data.includes('wfs:SUCCESS')) {
-    featureTools.notify('success', '编辑成功')
-    featureTools.reloadLayer()
+    featureToolsContext.notify('success', '编辑成功')
+    featureToolsContext.reloadLayer()
     handleDeactivate()
   }
   else {
-    featureTools.notify('error', '编辑失败')
+    featureToolsContext.notify('error', '编辑失败')
     isLoading.value = false
   }
 }
