@@ -1,11 +1,9 @@
-import process from 'node:process'
 import { fileURLToPath, URL } from 'node:url'
 
 import vue from '@vitejs/plugin-vue'
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig } from 'vite'
 
-export default defineConfig(({ mode }) => {
-  // const env = loadEnv(mode, process.cwd(), '')
+export default defineConfig(() => {
   const base = '/'
 
   return {
