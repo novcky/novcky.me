@@ -8,7 +8,10 @@
         Novick Yuan
       </h1>
       <p class="profile-paragraph">
-        专注 WebGIS 前端与地图交互工程化，这里会围绕
+        专注 WebGIS 前端与地图交互工程化，更关注连续交互、状态同步、工具抽象与长期维护。
+      </p>
+      <p class="profile-paragraph">
+        这里会围绕
         <a
           class="site-inline-link"
           href="#case-moving-marker"
@@ -19,9 +22,6 @@
           href="#case-feature-tools"
         >地图要素编辑</a>
         两类案例展开，目标是验证复杂地图交互在真实业务场景中的可复用性与稳定性。
-      </p>
-      <p class="profile-paragraph">
-        更关注连续交互、状态同步、工具抽象与长期维护，尽量把“能跑的 Demo”收敛成“可复用的工程能力”，而不是只停留在展示层效果。
       </p>
 
       <div class="profile-connect">
@@ -103,7 +103,6 @@
 .profile-copy {
   position: relative;
   z-index: 1;
-  max-width: min(100%, 92ch);
 }
 
 .profile-greeting {
@@ -163,7 +162,7 @@
 .profile-contact-link {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   color: rgb(0 0 0);
   text-decoration: none;
   border-bottom: 0;
@@ -181,8 +180,8 @@
 }
 
 .profile-contact-icon {
-  width: 11px;
-  height: 11px;
+  width: 1.2em;
+  height: 1.2em;
   display: inline-flex;
   align-items: center;
   justify-content: center;
